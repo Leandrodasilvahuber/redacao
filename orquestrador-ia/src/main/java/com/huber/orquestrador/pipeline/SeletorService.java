@@ -1,9 +1,12 @@
 package com.huber.orquestrador.pipeline;
 
 import com.huber.orquestrador.groq.GroqClient;
+import com.huber.orquestrador.groq.LimiteGroqAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -11,6 +14,8 @@ import java.util.List;
 
 @Service
 public class SeletorService {
+
+    private static final Logger log = LoggerFactory.getLogger(SeletorService.class);
 
     private static final String PROMPT_SISTEMA = """
             Você é um editor de tecnologia que decide quais notícias merecem virar um post no LinkedIn
@@ -41,7 +46,13 @@ public class SeletorService {
             }
 
             String pergunta = "Título: " + noticia.getTitulo() + "\nResumo: " + noticia.getResumoOriginal();
-            String resposta = groqClient.chat(PROMPT_SISTEMA, pergunta);
+            String resposta;
+            try {
+                resposta = groqClient.chat(PROMPT_SISTEMA, pergunta);
+            } catch (LimiteGroqAtingidoException e) {
+                log.warn("Parando seleção: {}", e.getMessage());
+                break;
+            }
 
             if (resposta.toUpperCase().startsWith("SIM")) {
                 noticia.mudarEstado(EstadoNoticia.SELECIONADA);
@@ -50,7 +61,6 @@ public class SeletorService {
                 noticia.mudarEstado(EstadoNoticia.DESCARTADA);
             }
             noticiaRepository.save(noticia);
-            Pausa.aguardar();
         }
         return selecionadas;
     }

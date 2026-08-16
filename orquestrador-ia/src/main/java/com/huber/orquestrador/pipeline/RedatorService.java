@@ -1,15 +1,20 @@
 package com.huber.orquestrador.pipeline;
 
 import com.huber.orquestrador.groq.GroqClient;
+import com.huber.orquestrador.groq.LimiteGroqAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class RedatorService {
+
+    private static final Logger log = LoggerFactory.getLogger(RedatorService.class);
 
     private static final String PROMPT_SISTEMA = """
             Você é um redator de posts para LinkedIn, especializado em tecnologia.
@@ -40,13 +45,18 @@ public class RedatorService {
                     + "\nResumo: " + noticia.getResumoOriginal()
                     + "\nLink original: " + noticia.getLink();
 
-            String post = groqClient.chat(PROMPT_SISTEMA, pergunta);
+            String post;
+            try {
+                post = groqClient.chat(PROMPT_SISTEMA, pergunta);
+            } catch (LimiteGroqAtingidoException e) {
+                log.warn("Parando redação: {}", e.getMessage());
+                break;
+            }
 
             noticia.setTextoRedigido(post);
             noticia.mudarEstado(EstadoNoticia.REDIGIDA);
             noticiaRepository.save(noticia);
             redigidas++;
-            Pausa.aguardar();
         }
         return redigidas;
     }

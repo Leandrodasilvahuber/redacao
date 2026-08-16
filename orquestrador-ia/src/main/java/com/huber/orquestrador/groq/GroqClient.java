@@ -1,6 +1,7 @@
 package com.huber.orquestrador.groq;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -11,9 +12,11 @@ public class GroqClient {
 
     private final RestClient restClient;
     private final GroqProperties properties;
+    private final GroqRateLimiter rateLimiter;
 
-    public GroqClient(GroqProperties properties) {
+    public GroqClient(GroqProperties properties, GroqRateLimiter rateLimiter) {
         this.properties = properties;
+        this.rateLimiter = rateLimiter;
         this.restClient = RestClient.builder()
                 .baseUrl(properties.getBaseUrl())
                 .defaultHeader("Authorization", "Bearer " + properties.getApiKey())
@@ -21,6 +24,8 @@ public class GroqClient {
     }
 
     public String chat(String systemPrompt, String userPrompt) {
+        rateLimiter.reservarRequisicao();
+
         ChatRequest request = new ChatRequest(
                 properties.getModel(),
                 List.of(
@@ -40,6 +45,10 @@ public class GroqClient {
             throw new IllegalStateException("Groq não retornou nenhuma resposta");
         }
 
+        if (response.usage() != null) {
+            rateLimiter.registrarTokensUsados(response.usage().totalTokens());
+        }
+
         return response.choices().get(0).message().content().trim();
     }
 
@@ -50,10 +59,14 @@ public class GroqClient {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record ChatResponse(List<Choice> choices) {
+    private record ChatResponse(List<Choice> choices, Usage usage) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record Choice(Mensagem message) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record Usage(@JsonProperty("total_tokens") int totalTokens) {
     }
 }

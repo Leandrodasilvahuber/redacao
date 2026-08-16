@@ -1,15 +1,20 @@
 package com.huber.orquestrador.pipeline;
 
 import com.huber.orquestrador.groq.GroqClient;
+import com.huber.orquestrador.groq.LimiteGroqAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class PublicadorService {
+
+    private static final Logger log = LoggerFactory.getLogger(PublicadorService.class);
 
     private static final String PROMPT_SISTEMA = """
             Você prepara posts para publicação no LinkedIn. Ajuste o texto abaixo para o formato final:
@@ -33,13 +38,18 @@ public class PublicadorService {
         int prontas = 0;
 
         for (Noticia noticia : revisadas) {
-            String textoFinal = groqClient.chat(PROMPT_SISTEMA, noticia.getTextoRevisado());
+            String textoFinal;
+            try {
+                textoFinal = groqClient.chat(PROMPT_SISTEMA, noticia.getTextoRevisado());
+            } catch (LimiteGroqAtingidoException e) {
+                log.warn("Parando formatação final: {}", e.getMessage());
+                break;
+            }
 
             noticia.setTextoFinal(textoFinal);
             noticia.mudarEstado(EstadoNoticia.PRONTA_PARA_PUBLICAR);
             noticiaRepository.save(noticia);
             prontas++;
-            Pausa.aguardar();
         }
         return prontas;
     }
