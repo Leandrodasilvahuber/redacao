@@ -24,6 +24,8 @@ public class Configuracao {
 
     private String mistralApiKey;
 
+    private String ideogramApiKey;
+
     @Column(nullable = false)
     private String criteriosBusca;
 
@@ -110,6 +112,14 @@ public class Configuracao {
 
     public void setMistralApiKey(String mistralApiKey) {
         this.mistralApiKey = mistralApiKey;
+    }
+
+    public String getIdeogramApiKey() {
+        return ideogramApiKey;
+    }
+
+    public void setIdeogramApiKey(String ideogramApiKey) {
+        this.ideogramApiKey = ideogramApiKey;
     }
 
     public String getCriteriosBusca() {

@@ -19,6 +19,7 @@ const ESTILOS_ILUSTRACAO = [
 
 const PROVEDORES_ILUSTRACAO = [
   { valor: "GEMINI", rotulo: "Gemini (desenho SVG)" },
+  { valor: "IDEOGRAM", rotulo: "Ideogram (imagem gerada, 25/dia grátis)" },
   { valor: "FLUX", rotulo: "Flux Schnell (imagem gerada)" },
 ];
 
@@ -26,6 +27,7 @@ const CHAVES_API = [
   { chave: "groqApiKey", rotulo: "Groq" },
   { chave: "geminiApiKey", rotulo: "Gemini" },
   { chave: "mistralApiKey", rotulo: "Mistral" },
+  { chave: "ideogramApiKey", rotulo: "Ideogram" },
 ];
 
 const ILUSTRACOES_BLOG = [
@@ -42,6 +44,7 @@ function estadoInicial() {
     groqApiKey: "",
     geminiApiKey: "",
     mistralApiKey: "",
+    ideogramApiKey: "",
     criteriosBusca: [],
     revisarFonteVeridica: true,
     revisarEstrutura: true,
@@ -79,6 +82,7 @@ export default function Configuracoes() {
         groqApiKey: "",
         geminiApiKey: "",
         mistralApiKey: "",
+        ideogramApiKey: "",
         criteriosBusca: dados.criteriosBusca ?? [],
         revisarFonteVeridica: dados.revisarFonteVeridica,
         revisarEstrutura: dados.revisarEstrutura,
@@ -120,6 +124,7 @@ export default function Configuracoes() {
         groqApiKey: "",
         geminiApiKey: "",
         mistralApiKey: "",
+        ideogramApiKey: "",
         blogApiToken: "",
         linkedinClientId: "",
         linkedinClientSecret: "",
@@ -136,11 +141,13 @@ export default function Configuracoes() {
     groqApiKey: status.groqApiKeyMascarada,
     geminiApiKey: status.geminiApiKeyMascarada,
     mistralApiKey: status.mistralApiKeyMascarada,
+    ideogramApiKey: status.ideogramApiKeyMascarada,
   };
   const configuradaPorChave = {
     groqApiKey: status.groqApiKeyConfigurada,
     geminiApiKey: status.geminiApiKeyConfigurada,
     mistralApiKey: status.mistralApiKeyConfigurada,
+    ideogramApiKey: status.ideogramApiKeyConfigurada,
   };
 
   if (carregando) {

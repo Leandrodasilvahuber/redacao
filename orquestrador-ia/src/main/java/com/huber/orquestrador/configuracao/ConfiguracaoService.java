@@ -29,6 +29,7 @@ public class ConfiguracaoService {
                 mascarar(config.getGroqApiKey()), temValor(config.getGroqApiKey()),
                 mascarar(config.getGeminiApiKey()), temValor(config.getGeminiApiKey()),
                 mascarar(config.getMistralApiKey()), temValor(config.getMistralApiKey()),
+                mascarar(config.getIdeogramApiKey()), temValor(config.getIdeogramApiKey()),
                 parseCriterios(config.getCriteriosBusca()).stream().map(Enum::name).collect(Collectors.toList()),
                 config.isRevisarFonteVeridica(),
                 config.isRevisarEstrutura(),
@@ -58,6 +59,9 @@ public class ConfiguracaoService {
         }
         if (temValor(request.mistralApiKey())) {
             config.setMistralApiKey(request.mistralApiKey().trim());
+        }
+        if (temValor(request.ideogramApiKey())) {
+            config.setIdeogramApiKey(request.ideogramApiKey().trim());
         }
 
         List<String> criterios = request.criteriosBusca() != null ? request.criteriosBusca() : List.of();
@@ -147,6 +151,10 @@ public class ConfiguracaoService {
 
     public String getMistralApiKey() {
         return obter().getMistralApiKey();
+    }
+
+    public String getIdeogramApiKey() {
+        return obter().getIdeogramApiKey();
     }
 
     public String getBlogApiUrl() {

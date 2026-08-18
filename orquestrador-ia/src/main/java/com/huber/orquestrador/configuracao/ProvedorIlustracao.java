@@ -2,6 +2,7 @@ package com.huber.orquestrador.configuracao;
 
 public enum ProvedorIlustracao {
     GEMINI("Gemini (desenho SVG)"),
+    IDEOGRAM("Ideogram (imagem gerada, 25/dia grátis)"),
     FLUX("Flux Schnell (imagem gerada)");
 
     private final String rotulo;

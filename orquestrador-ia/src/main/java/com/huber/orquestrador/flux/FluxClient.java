@@ -27,11 +27,14 @@ public class FluxClient {
     /**
      * Gera uma imagem via Flux Schnell (Pollinations.ai, sem chave de API) e devolve como data URI base64.
      */
-    public String gerarImagemBase64(String prompt, int largura, int altura, long seed) {
+    public String gerarImagemBase64(String prompt, String negativePrompt, int largura, int altura, long seed) {
         String promptCodificado = URLEncoder.encode(prompt, StandardCharsets.UTF_8).replace("+", "%20");
         String uri = "/prompt/" + promptCodificado
                 + "?width=" + largura + "&height=" + altura
                 + "&model=flux&seed=" + seed + "&nologo=true";
+        if (negativePrompt != null && !negativePrompt.isBlank()) {
+            uri += "&negative_prompt=" + URLEncoder.encode(negativePrompt, StandardCharsets.UTF_8).replace("+", "%20");
+        }
 
         byte[] imagem;
         try {

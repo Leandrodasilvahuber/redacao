@@ -6,6 +6,8 @@ import com.huber.orquestrador.configuracao.ProvedorIlustracao;
 import com.huber.orquestrador.flux.FluxClient;
 import com.huber.orquestrador.gemini.GeminiClient;
 import com.huber.orquestrador.gemini.LimiteGeminiAtingidoException;
+import com.huber.orquestrador.ideogram.IdeogramClient;
+import com.huber.orquestrador.ideogram.LimiteIdeogramAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
@@ -51,20 +53,26 @@ public class IlustradorService {
             Responda apenas com o código SVG completo, sem comentários, sem markdown, sem crases.
             """;
 
+    private static final String NEGATIVE_PROMPT_IMAGEM =
+            "text, watermark, logo, human faces, portraits, photorealistic people";
+
     private static final int LARGURA_IMAGEM = 1200;
     private static final int ALTURA_IMAGEM = 627;
+    private static final String RESOLUCAO_IDEOGRAM = "1344x704";
 
     private final NoticiaRepository noticiaRepository;
     private final GeminiClient geminiClient;
+    private final IdeogramClient ideogramClient;
     private final FluxClient fluxClient;
     private final ObjectMapper objectMapper;
     private final ConfiguracaoService configuracaoService;
 
     public IlustradorService(NoticiaRepository noticiaRepository, GeminiClient geminiClient,
-                              FluxClient fluxClient, ObjectMapper objectMapper,
+                              IdeogramClient ideogramClient, FluxClient fluxClient, ObjectMapper objectMapper,
                               ConfiguracaoService configuracaoService) {
         this.noticiaRepository = noticiaRepository;
         this.geminiClient = geminiClient;
+        this.ideogramClient = ideogramClient;
         this.fluxClient = fluxClient;
         this.objectMapper = objectMapper;
         this.configuracaoService = configuracaoService;
@@ -89,15 +97,17 @@ public class IlustradorService {
 
         int ilustradas = 0;
         boolean[] geminiEsgotado = {false};
+        boolean[] ideogramEsgotado = {false};
         ProvedorIlustracao provedor = configuracaoService.getProvedorIlustracao();
         String promptSvgGemini = montarPromptSvgGemini();
 
         for (Noticia noticia : revisadas) {
             String textoIlustrado = gerarTextoIlustrado(noticia, geminiEsgotado);
-            String ilustracao = gerarIlustracao(noticia, provedor, promptSvgGemini, geminiEsgotado);
+            String ilustracao = gerarIlustracao(noticia, provedor, promptSvgGemini, geminiEsgotado, ideogramEsgotado);
 
             if (ilustracao == null) {
-                log.warn("Sem ilustração disponível para a notícia {} (Gemini e Flux falharam)", noticia.getId());
+                log.warn("Sem ilustração disponível para a notícia {} (provedor configurado e Flux falharam)",
+                        noticia.getId());
                 continue;
             }
 
@@ -133,12 +143,12 @@ public class IlustradorService {
     }
 
     /**
-     * Gemini desenha o SVG por padrão; se a cota diária estourar ou a chamada falhar, cai para o Flux
-     * Schnell (Pollinations, sem chave e praticamente ilimitado) pelo resto da execução. Se o provedor
-     * configurado já for o Flux, vai direto para ele.
+     * Gemini/Ideogram são o provedor primário conforme configurado; se a cota diária estourar ou a
+     * chamada falhar, cai para o Flux Schnell (Pollinations, sem chave e praticamente ilimitado) pelo
+     * resto da execução. Se o provedor configurado já for o Flux, vai direto para ele.
      */
     private String gerarIlustracao(Noticia noticia, ProvedorIlustracao provedor, String promptSvgGemini,
-                                    boolean[] geminiEsgotado) {
+                                    boolean[] geminiEsgotado, boolean[] ideogramEsgotado) {
         if (provedor == ProvedorIlustracao.GEMINI && !geminiEsgotado[0]) {
             try {
                 String pedido = "Título: " + noticia.getTitulo() + "\nTexto revisado:\n" + noticia.getTextoRevisado();
@@ -151,15 +161,28 @@ public class IlustradorService {
                 log.warn("Falha ao desenhar ilustração no Gemini para a notícia {}, tentando Flux (Pollinations): {}",
                         noticia.getId(), e.getMessage());
             }
+        } else if (provedor == ProvedorIlustracao.IDEOGRAM && !ideogramEsgotado[0]) {
+            try {
+                String prompt = montarPromptImagem(noticia);
+                long seed = noticia.getId() != null ? noticia.getId() : System.currentTimeMillis();
+                return ideogramClient.gerarImagemBase64(prompt, NEGATIVE_PROMPT_IMAGEM, RESOLUCAO_IDEOGRAM, seed);
+            } catch (LimiteIdeogramAtingidoException e) {
+                log.warn("Limite do Ideogram atingido, usando Flux (Pollinations) pelo resto da execução: {}",
+                        e.getMessage());
+                ideogramEsgotado[0] = true;
+            } catch (Exception e) {
+                log.warn("Falha ao gerar ilustração no Ideogram para a notícia {}, tentando Flux (Pollinations): {}",
+                        noticia.getId(), e.getMessage());
+            }
         }
         return gerarImagemFlux(noticia);
     }
 
     private String gerarImagemFlux(Noticia noticia) {
         try {
-            String prompt = montarPromptFlux(noticia);
+            String prompt = montarPromptImagem(noticia);
             long seed = noticia.getId() != null ? noticia.getId() : System.currentTimeMillis();
-            return fluxClient.gerarImagemBase64(prompt, LARGURA_IMAGEM, ALTURA_IMAGEM, seed);
+            return fluxClient.gerarImagemBase64(prompt, NEGATIVE_PROMPT_IMAGEM, LARGURA_IMAGEM, ALTURA_IMAGEM, seed);
         } catch (Exception e) {
             log.warn("Falha ao gerar ilustração no Flux (Pollinations) para a notícia {}: {}",
                     noticia.getId(), e.getMessage());
@@ -168,18 +191,17 @@ public class IlustradorService {
     }
 
     /**
-     * Prompts longos com o corpo da notícia (em português, com tom editorial abstrato) fazem o Flux cair
-     * num retrato genérico sem relação com o tema. Focar só no título, com objetos concretos do tema e uma
-     * negativa explícita contra retratos/pessoas realistas, dá resultados muito mais aderentes ao assunto.
+     * Prompts longos com o corpo da notícia (em português, com tom editorial abstrato) fazem os modelos de
+     * imagem caírem num retrato genérico sem relação com o tema. Focar só no título, com objetos concretos
+     * do tema (e a negativa contra retratos/pessoas realistas, à parte, em NEGATIVE_PROMPT_IMAGEM), dá
+     * resultados muito mais aderentes ao assunto.
      */
-    private String montarPromptFlux(Noticia noticia) {
+    private String montarPromptImagem(Noticia noticia) {
         EstiloIlustracao estilo = configuracaoService.getEstiloIlustracao();
         return "Flat vector editorial illustration, tech blog cover style, " + estilo.getDescricaoPrompt() + ". "
                 + "Central scene built from concrete technology icons, devices and symbols related to: "
                 + noticia.getTitulo()
                 + " -- arranged as a clear editorial composition. "
-                + "No human faces, no portraits, no photorealistic people. "
-                + "Vibrant varied color palette, clean flat design, wide banner, "
-                + "no readable text, no watermark, no logo.";
+                + "Vibrant varied color palette, clean flat design, wide banner.";
     }
 }
