@@ -45,7 +45,27 @@ public class Noticia {
     private String textoRevisado;
 
     @Lob
+    private String textoIlustrado;
+
+    @Lob
+    private String svgIlustracao;
+
+    @Lob
     private String textoFinal;
+
+    private String linkedinPostUrn;
+
+    private Instant linkedinPublicadoEm;
+
+    @Lob
+    private String linkedinErro;
+
+    private String blogPostId;
+
+    private Instant blogPublicadoEm;
+
+    @Lob
+    private String blogErro;
 
     @Column(nullable = false, updatable = false)
     private Instant criadoEm;
@@ -118,6 +138,24 @@ public class Noticia {
         this.atualizadoEm = Instant.now();
     }
 
+    public String getTextoIlustrado() {
+        return textoIlustrado;
+    }
+
+    public void setTextoIlustrado(String textoIlustrado) {
+        this.textoIlustrado = textoIlustrado;
+        this.atualizadoEm = Instant.now();
+    }
+
+    public String getSvgIlustracao() {
+        return svgIlustracao;
+    }
+
+    public void setSvgIlustracao(String svgIlustracao) {
+        this.svgIlustracao = svgIlustracao;
+        this.atualizadoEm = Instant.now();
+    }
+
     public String getTextoFinal() {
         return textoFinal;
     }
@@ -133,5 +171,53 @@ public class Noticia {
 
     public Instant getAtualizadoEm() {
         return atualizadoEm;
+    }
+
+    public String getLinkedinPostUrn() {
+        return linkedinPostUrn;
+    }
+
+    public Instant getLinkedinPublicadoEm() {
+        return linkedinPublicadoEm;
+    }
+
+    public String getLinkedinErro() {
+        return linkedinErro;
+    }
+
+    public void marcarPublicadaNoLinkedin(String postUrn) {
+        this.linkedinPostUrn = postUrn;
+        this.linkedinPublicadoEm = Instant.now();
+        this.linkedinErro = null;
+        this.atualizadoEm = Instant.now();
+    }
+
+    public void marcarErroLinkedin(String erro) {
+        this.linkedinErro = erro;
+        this.atualizadoEm = Instant.now();
+    }
+
+    public String getBlogPostId() {
+        return blogPostId;
+    }
+
+    public Instant getBlogPublicadoEm() {
+        return blogPublicadoEm;
+    }
+
+    public String getBlogErro() {
+        return blogErro;
+    }
+
+    public void marcarPublicadaNoBlog(String postId) {
+        this.blogPostId = postId;
+        this.blogPublicadoEm = Instant.now();
+        this.blogErro = null;
+        this.atualizadoEm = Instant.now();
+    }
+
+    public void marcarErroBlog(String erro) {
+        this.blogErro = erro;
+        this.atualizadoEm = Instant.now();
     }
 }

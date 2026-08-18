@@ -6,6 +6,7 @@ public enum EstadoNoticia {
     DESCARTADA,
     REDIGIDA,
     REVISADA,
+    ILUSTRADA,
     PRONTA_PARA_PUBLICAR,
     PUBLICADA
 }

@@ -1,7 +1,7 @@
 package com.huber.orquestrador.pipeline;
 
-import com.huber.orquestrador.groq.GroqClient;
-import com.huber.orquestrador.groq.LimiteGroqAtingidoException;
+import com.huber.orquestrador.configuracao.ConfiguracaoService;
+import com.huber.orquestrador.mistral.LimiteMistralAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
@@ -24,20 +24,45 @@ public class RedatorService {
             - Tom profissional, mas acessível e com opinião
             - Entre 800 e 1300 caracteres
             - Termine com 3 a 5 hashtags relevantes
+            - Não sugira, descreva ou mencione imagens, fotos, vídeos ou qualquer elemento visual — o post é só texto
             Responda apenas com o texto final do post, sem comentários adicionais.
             """;
 
-    private final NoticiaRepository noticiaRepository;
-    private final GroqClient groqClient;
+    private static final String REGRA_ATRIBUIR_FONTE =
+            "\n- Cite a fonte original da notícia de forma natural no texto (ex: 'segundo a {fonte}')";
 
-    public RedatorService(NoticiaRepository noticiaRepository, GroqClient groqClient) {
+    private final NoticiaRepository noticiaRepository;
+    private final ClienteTextoIa clienteTextoIa;
+    private final ConfiguracaoService configuracaoService;
+
+    public RedatorService(NoticiaRepository noticiaRepository, ClienteTextoIa clienteTextoIa,
+                           ConfiguracaoService configuracaoService) {
         this.noticiaRepository = noticiaRepository;
-        this.groqClient = groqClient;
+        this.clienteTextoIa = clienteTextoIa;
+        this.configuracaoService = configuracaoService;
+    }
+
+    private String montarPromptSistema() {
+        if (!configuracaoService.isAtribuirFonte()) {
+            return PROMPT_SISTEMA;
+        }
+        return PROMPT_SISTEMA + REGRA_ATRIBUIR_FONTE;
     }
 
     public int redigir() {
-        List<Noticia> selecionadas = noticiaRepository.findByEstado(EstadoNoticia.SELECIONADA);
+        return redigir(null);
+    }
+
+    public int redigir(Long id) {
+        List<Noticia> selecionadas = id != null
+                ? noticiaRepository.findById(id)
+                        .filter(n -> n.getEstado() == EstadoNoticia.SELECIONADA)
+                        .map(List::of)
+                        .orElseGet(List::of)
+                : noticiaRepository.findByEstado(EstadoNoticia.SELECIONADA);
         int redigidas = 0;
+        boolean[] usarMistral = {false};
+        String promptSistema = montarPromptSistema();
 
         for (Noticia noticia : selecionadas) {
             String pergunta = "Título: " + noticia.getTitulo()
@@ -47,8 +72,8 @@ public class RedatorService {
 
             String post;
             try {
-                post = groqClient.chat(PROMPT_SISTEMA, pergunta);
-            } catch (LimiteGroqAtingidoException e) {
+                post = clienteTextoIa.chat(usarMistral, promptSistema, pergunta);
+            } catch (LimiteMistralAtingidoException e) {
                 log.warn("Parando redação: {}", e.getMessage());
                 break;
             }

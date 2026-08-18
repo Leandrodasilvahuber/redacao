@@ -1,7 +1,6 @@
 package com.huber.orquestrador.pipeline;
 
-import com.huber.orquestrador.groq.GroqClient;
-import com.huber.orquestrador.groq.LimiteGroqAtingidoException;
+import com.huber.orquestrador.mistral.LimiteMistralAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
@@ -22,26 +21,37 @@ public class PublicadorService {
             - Garanta que o texto tenha no máximo 3000 caracteres
             - Garanta que as hashtags estejam na última linha, separadas por espaço
             - Não altere o conteúdo nem o tom, só a formatação
+            - Não inclua nem sugira imagens, fotos, vídeos ou qualquer elemento visual — o resultado é só texto
             Responda apenas com o texto final pronto para publicar, sem explicações.
             """;
 
     private final NoticiaRepository noticiaRepository;
-    private final GroqClient groqClient;
+    private final ClienteTextoIa clienteTextoIa;
 
-    public PublicadorService(NoticiaRepository noticiaRepository, GroqClient groqClient) {
+    public PublicadorService(NoticiaRepository noticiaRepository, ClienteTextoIa clienteTextoIa) {
         this.noticiaRepository = noticiaRepository;
-        this.groqClient = groqClient;
+        this.clienteTextoIa = clienteTextoIa;
     }
 
     public int publicar() {
-        List<Noticia> revisadas = noticiaRepository.findByEstado(EstadoNoticia.REVISADA);
-        int prontas = 0;
+        return publicar(null);
+    }
 
-        for (Noticia noticia : revisadas) {
+    public int publicar(Long id) {
+        List<Noticia> ilustradas = id != null
+                ? noticiaRepository.findById(id)
+                        .filter(n -> n.getEstado() == EstadoNoticia.ILUSTRADA)
+                        .map(List::of)
+                        .orElseGet(List::of)
+                : noticiaRepository.findByEstado(EstadoNoticia.ILUSTRADA);
+        int prontas = 0;
+        boolean[] usarMistral = {false};
+
+        for (Noticia noticia : ilustradas) {
             String textoFinal;
             try {
-                textoFinal = groqClient.chat(PROMPT_SISTEMA, noticia.getTextoRevisado());
-            } catch (LimiteGroqAtingidoException e) {
+                textoFinal = clienteTextoIa.chat(usarMistral, PROMPT_SISTEMA, noticia.getTextoIlustrado());
+            } catch (LimiteMistralAtingidoException e) {
                 log.warn("Parando formatação final: {}", e.getMessage());
                 break;
             }

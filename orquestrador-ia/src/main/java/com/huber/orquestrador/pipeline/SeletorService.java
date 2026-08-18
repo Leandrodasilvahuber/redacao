@@ -1,7 +1,8 @@
 package com.huber.orquestrador.pipeline;
 
-import com.huber.orquestrador.groq.GroqClient;
-import com.huber.orquestrador.groq.LimiteGroqAtingidoException;
+import com.huber.orquestrador.configuracao.ConfiguracaoService;
+import com.huber.orquestrador.configuracao.CriterioBusca;
+import com.huber.orquestrador.mistral.LimiteMistralAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class SeletorService {
@@ -24,21 +26,44 @@ public class SeletorService {
             """;
 
     private final NoticiaRepository noticiaRepository;
-    private final GroqClient groqClient;
+    private final ClienteTextoIa clienteTextoIa;
+    private final ConfiguracaoService configuracaoService;
     private final int limiteDiario;
 
     public SeletorService(NoticiaRepository noticiaRepository,
-                           GroqClient groqClient,
+                           ClienteTextoIa clienteTextoIa,
+                           ConfiguracaoService configuracaoService,
                            @Value("${selecao.limite-diario}") int limiteDiario) {
         this.noticiaRepository = noticiaRepository;
-        this.groqClient = groqClient;
+        this.clienteTextoIa = clienteTextoIa;
+        this.configuracaoService = configuracaoService;
         this.limiteDiario = limiteDiario;
     }
 
+    private String montarPromptSistema() {
+        List<CriterioBusca> criterios = configuracaoService.getCriteriosBuscaAtivos();
+        if (criterios.isEmpty()) {
+            return PROMPT_SISTEMA;
+        }
+        String lista = criterios.stream().map(CriterioBusca::getRotulo).collect(Collectors.joining(", "));
+        return PROMPT_SISTEMA + "\nPriorize especialmente notícias do tipo: " + lista + ".";
+    }
+
     public int selecionar() {
-        List<Noticia> pendentes = noticiaRepository.findByEstado(EstadoNoticia.BUSCADA);
+        return selecionar(null);
+    }
+
+    public int selecionar(Long id) {
+        List<Noticia> pendentes = id != null
+                ? noticiaRepository.findById(id)
+                        .filter(n -> n.getEstado() == EstadoNoticia.BUSCADA)
+                        .map(List::of)
+                        .orElseGet(List::of)
+                : noticiaRepository.findByEstado(EstadoNoticia.BUSCADA);
         long jaSelecionadasHoje = noticiaRepository.findByEstado(EstadoNoticia.SELECIONADA).size();
         int selecionadas = 0;
+        boolean[] usarMistral = {false};
+        String promptSistema = montarPromptSistema();
 
         for (Noticia noticia : pendentes) {
             if (jaSelecionadasHoje + selecionadas >= limiteDiario) {
@@ -48,8 +73,8 @@ public class SeletorService {
             String pergunta = "Título: " + noticia.getTitulo() + "\nResumo: " + noticia.getResumoOriginal();
             String resposta;
             try {
-                resposta = groqClient.chat(PROMPT_SISTEMA, pergunta);
-            } catch (LimiteGroqAtingidoException e) {
+                resposta = clienteTextoIa.chat(usarMistral, promptSistema, pergunta);
+            } catch (LimiteMistralAtingidoException e) {
                 log.warn("Parando seleção: {}", e.getMessage());
                 break;
             }
