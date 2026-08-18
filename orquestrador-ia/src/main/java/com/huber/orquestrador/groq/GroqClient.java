@@ -2,7 +2,9 @@ package com.huber.orquestrador.groq;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.huber.orquestrador.configuracao.ConfiguracaoService;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -13,14 +15,20 @@ public class GroqClient {
     private final RestClient restClient;
     private final GroqProperties properties;
     private final GroqRateLimiter rateLimiter;
+    private final ConfiguracaoService configuracaoService;
 
-    public GroqClient(GroqProperties properties, GroqRateLimiter rateLimiter) {
+    public GroqClient(GroqProperties properties, GroqRateLimiter rateLimiter, ConfiguracaoService configuracaoService) {
         this.properties = properties;
         this.rateLimiter = rateLimiter;
+        this.configuracaoService = configuracaoService;
         this.restClient = RestClient.builder()
                 .baseUrl(properties.getBaseUrl())
-                .defaultHeader("Authorization", "Bearer " + properties.getApiKey())
                 .build();
+    }
+
+    private String resolverApiKey() {
+        String apiKey = configuracaoService.getGroqApiKey();
+        return apiKey != null && !apiKey.isBlank() ? apiKey : properties.getApiKey();
     }
 
     public String chat(String systemPrompt, String userPrompt) {
@@ -35,11 +43,19 @@ public class GroqClient {
                 0.5
         );
 
-        ChatResponse response = restClient.post()
-                .uri("/chat/completions")
-                .body(request)
-                .retrieve()
-                .body(ChatResponse.class);
+        ChatResponse response;
+        try {
+            response = restClient.post()
+                    .uri("/chat/completions")
+                    .header("Authorization", "Bearer " + resolverApiKey())
+                    .body(request)
+                    .retrieve()
+                    .body(ChatResponse.class);
+        } catch (HttpClientErrorException.TooManyRequests e) {
+            rateLimiter.registrarLimiteRealAtingido();
+            throw new LimiteGroqAtingidoException(
+                    "Limite real da conta Groq atingido (a Groq recusou a chamada): " + e.getMessage());
+        }
 
         if (response == null || response.choices() == null || response.choices().isEmpty()) {
             throw new IllegalStateException("Groq não retornou nenhuma resposta");

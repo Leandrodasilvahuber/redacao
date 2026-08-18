@@ -14,6 +14,9 @@ import java.util.Deque;
  * Impede que o app ultrapasse o plano gratuito do Groq: aplica sempre metade
  * dos limites reais do plano (FATOR_SEGURANCA), independente do que estiver
  * configurado em application.properties.
+ *
+ * O uso diário (requisições e tokens) é persistido no banco (tabela
+ * groq_uso_diario) para que reiniciar o app não zere o contador de segurança.
  */
 @Component
 public class GroqRateLimiter {
@@ -28,24 +31,32 @@ public class GroqRateLimiter {
     private final int limiteTokensPorMinuto;
     private final int limiteTokensPorDia;
 
+    private final GroqUsoDiarioRepository usoDiarioRepository;
+
     private final Deque<Instant> requisicoesUltimoMinuto = new ArrayDeque<>();
     private final Deque<UsoToken> tokensUltimoMinuto = new ArrayDeque<>();
 
-    private LocalDate diaAtual = LocalDate.now(ZoneId.systemDefault());
-    private int requisicoesHoje = 0;
-    private int tokensHoje = 0;
+    private GroqUsoDiario usoAtual;
 
-    public GroqRateLimiter(GroqLimiteProperties limitesDoPlano) {
+    public GroqRateLimiter(GroqLimiteProperties limitesDoPlano, GroqUsoDiarioRepository usoDiarioRepository) {
         this.limiteRequisicoesPorMinuto = aplicarFator(limitesDoPlano.getRequisicoesPorMinuto());
         this.limiteRequisicoesPorDia = aplicarFator(limitesDoPlano.getRequisicoesPorDia());
         this.limiteTokensPorMinuto = aplicarFator(limitesDoPlano.getTokensPorMinuto());
         this.limiteTokensPorDia = aplicarFator(limitesDoPlano.getTokensPorDia());
-        log.info("Limites efetivos do Groq (metade do plano): {} req/min, {} req/dia, {} tokens/min, {} tokens/dia",
-                limiteRequisicoesPorMinuto, limiteRequisicoesPorDia, limiteTokensPorMinuto, limiteTokensPorDia);
+        this.usoDiarioRepository = usoDiarioRepository;
+        this.usoAtual = carregarOuCriar(LocalDate.now(ZoneId.systemDefault()));
+        log.info("Limites efetivos do Groq (metade do plano): {} req/min, {} req/dia, {} tokens/min, {} tokens/dia. "
+                        + "Uso já registrado hoje: {} req, {} tokens.",
+                limiteRequisicoesPorMinuto, limiteRequisicoesPorDia, limiteTokensPorMinuto, limiteTokensPorDia,
+                usoAtual.getRequisicoes(), usoAtual.getTokens());
     }
 
     private static int aplicarFator(int limiteDoPlano) {
         return Math.max(1, (int) Math.floor(limiteDoPlano * FATOR_SEGURANCA));
+    }
+
+    private GroqUsoDiario carregarOuCriar(LocalDate dia) {
+        return usoDiarioRepository.findById(dia).orElseGet(() -> usoDiarioRepository.save(new GroqUsoDiario(dia)));
     }
 
     /**
@@ -64,27 +75,52 @@ public class GroqRateLimiter {
             purgarJanelaMinuto();
         }
 
-        if (requisicoesHoje >= limiteRequisicoesPorDia || tokensHoje >= limiteTokensPorDia) {
+        if (usoAtual.getRequisicoes() >= limiteRequisicoesPorDia || usoAtual.getTokens() >= limiteTokensPorDia) {
             throw new LimiteGroqAtingidoException(
                     "Limite diário seguro do Groq atingido (%d req/dia ou %d tokens/dia, 50%% do plano). Tente novamente amanhã."
                             .formatted(limiteRequisicoesPorDia, limiteTokensPorDia));
         }
 
         requisicoesUltimoMinuto.add(Instant.now());
-        requisicoesHoje++;
+        usoAtual.incrementarRequisicoes();
+        usoDiarioRepository.save(usoAtual);
+    }
+
+    /**
+     * Chamado quando a própria API do Groq recusa a chamada por limite real de uso.
+     * Trava o contador local no teto do dia para não tentar de novo até o dia virar,
+     * mesmo que nosso contador de segurança (persistido) tivesse folga.
+     */
+    public synchronized void registrarLimiteRealAtingido() {
+        renovarDiaSeNecessario();
+        usoAtual.somarTokens(Math.max(0, limiteTokensPorDia - usoAtual.getTokens()));
+        usoDiarioRepository.save(usoAtual);
     }
 
     public synchronized void registrarTokensUsados(int tokens) {
         tokensUltimoMinuto.add(new UsoToken(Instant.now(), tokens));
-        tokensHoje += tokens;
+        usoAtual.somarTokens(tokens);
+        usoDiarioRepository.save(usoAtual);
+    }
+
+    public synchronized GroqUsoStatus statusAtual() {
+        renovarDiaSeNecessario();
+        purgarJanelaMinuto();
+        return new GroqUsoStatus(
+                usoAtual.getRequisicoes(),
+                limiteRequisicoesPorDia,
+                usoAtual.getTokens(),
+                limiteTokensPorDia,
+                requisicoesUltimoMinuto.size(),
+                limiteRequisicoesPorMinuto,
+                (int) somaTokensUltimoMinuto(),
+                limiteTokensPorMinuto);
     }
 
     private void renovarDiaSeNecessario() {
         LocalDate hoje = LocalDate.now(ZoneId.systemDefault());
-        if (!hoje.equals(diaAtual)) {
-            diaAtual = hoje;
-            requisicoesHoje = 0;
-            tokensHoje = 0;
+        if (!hoje.equals(usoAtual.getDia())) {
+            usoAtual = carregarOuCriar(hoje);
         }
     }
 
