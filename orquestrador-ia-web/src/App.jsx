@@ -1,23 +1,34 @@
 import { useCallback, useEffect, useState } from "react";
 import Board from "./Board";
+import Configuracoes from "./Configuracoes";
 import DetalheModal from "./DetalheModal";
-import { listarNoticias, marcarPublicada, rodarEtapa } from "./api";
+import UsoGroq from "./UsoGroq";
+import UsoMistral from "./UsoMistral";
+import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, listarNoticias, marcarPublicada, rodarEtapa } from "./api";
+import { PROXIMA_ETAPA } from "./estados";
+import { listaDeIlustracoes, rasterizarSvgParaPng } from "./svgUtils";
 import "./App.css";
 
-const ETAPAS = [
-  { chave: "buscar", rotulo: "Buscar" },
-  { chave: "selecionar", rotulo: "Selecionar" },
-  { chave: "redigir", rotulo: "Redigir" },
-  { chave: "revisar", rotulo: "Revisar" },
-  { chave: "publicar", rotulo: "Publicar" },
-];
+async function rasterizarIlustracao(noticia) {
+  try {
+    const [primeiraIlustracao] = listaDeIlustracoes(noticia?.svgIlustracao);
+    return await rasterizarSvgParaPng(primeiraIlustracao);
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
   const [noticias, setNoticias] = useState([]);
   const [selecionada, setSelecionada] = useState(null);
   const [etapaRodando, setEtapaRodando] = useState(null);
+  const [processando, setProcessando] = useState(null);
   const [aprovando, setAprovando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [usoGroq, setUsoGroq] = useState(null);
+  const [usoGemini, setUsoGemini] = useState(null);
+  const [usoMistral, setUsoMistral] = useState(null);
+  const [abaAtiva, setAbaAtiva] = useState("board");
 
   const carregar = useCallback(async () => {
     try {
@@ -29,17 +40,52 @@ export default function App() {
     }
   }, []);
 
+  const carregarUsoGroq = useCallback(async () => {
+    try {
+      const dados = await buscarUsoGroq();
+      setUsoGroq(dados);
+    } catch {
+      // silencioso: métricas de uso não são essenciais para o funcionamento da tela
+    }
+  }, []);
+
+  const carregarUsoGemini = useCallback(async () => {
+    try {
+      const dados = await buscarUsoGemini();
+      setUsoGemini(dados);
+    } catch {
+      // silencioso: métricas de uso não são essenciais para o funcionamento da tela
+    }
+  }, []);
+
+  const carregarUsoMistral = useCallback(async () => {
+    try {
+      const dados = await buscarUsoMistral();
+      setUsoMistral(dados);
+    } catch {
+      // silencioso: métricas de uso não são essenciais para o funcionamento da tela
+    }
+  }, []);
+
   useEffect(() => {
     carregar();
-    const intervalo = setInterval(carregar, 5000);
+    carregarUsoGroq();
+    carregarUsoGemini();
+    carregarUsoMistral();
+    const intervalo = setInterval(() => {
+      carregar();
+      carregarUsoGroq();
+      carregarUsoGemini();
+      carregarUsoMistral();
+    }, 5000);
     return () => clearInterval(intervalo);
-  }, [carregar]);
+  }, [carregar, carregarUsoGroq, carregarUsoGemini, carregarUsoMistral]);
 
-  async function executarEtapa(chave) {
-    setEtapaRodando(chave);
+  async function buscarNoticias() {
+    setEtapaRodando("buscar");
     setErro(null);
     try {
-      await rodarEtapa(chave);
+      await rodarEtapa("buscar", null);
       await carregar();
     } catch (e) {
       setErro(e.message);
@@ -48,23 +94,53 @@ export default function App() {
     }
   }
 
-  async function executarTudo() {
-    setEtapaRodando("executar-tudo");
+  async function moverNoticia(id, estadoDestino) {
+    const noticia = noticias.find((n) => n.id === id);
+    if (!noticia) return;
+    const proxima = PROXIMA_ETAPA[noticia.estado];
+    if (!proxima || proxima.destino !== estadoDestino) {
+      setErro(`Não é possível mover de "${noticia.estado}" direto para "${estadoDestino}".`);
+      return;
+    }
+    setEtapaRodando(`mover-${id}`);
+    setProcessando({ id, etapa: proxima.etapa });
     setErro(null);
     try {
-      await rodarEtapa("executar-tudo");
+      if (proxima.etapa === "aprovar") {
+        const imagemPngBase64 = await rasterizarIlustracao(noticia);
+        await marcarPublicada(id, imagemPngBase64);
+      } else {
+        await rodarEtapa(proxima.etapa, id);
+      }
       await carregar();
+      await carregarUsoGroq();
+      await carregarUsoGemini();
+      await carregarUsoMistral();
     } catch (e) {
       setErro(e.message);
     } finally {
       setEtapaRodando(null);
+      setProcessando(null);
+    }
+  }
+
+  async function excluir(id) {
+    setErro(null);
+    try {
+      await excluirNoticia(id);
+      setNoticias((atuais) => atuais.filter((n) => n.id !== id));
+      if (selecionada?.id === id) setSelecionada(null);
+    } catch (e) {
+      setErro(e.message);
     }
   }
 
   async function aprovar(id) {
     setAprovando(true);
     try {
-      await marcarPublicada(id);
+      const noticia = noticias.find((n) => n.id === id);
+      const imagemPngBase64 = await rasterizarIlustracao(noticia);
+      await marcarPublicada(id, imagemPngBase64);
       await carregar();
       setSelecionada(null);
     } catch (e) {
@@ -78,36 +154,63 @@ export default function App() {
     <div className="app">
       <header className="topo">
         <h1>Orquestrador de IAs — Notícias para LinkedIn</h1>
-        <div className="botoes-etapas">
-          {ETAPAS.map(({ chave, rotulo }) => (
-            <button
-              key={chave}
-              onClick={() => executarEtapa(chave)}
-              disabled={etapaRodando !== null}
-            >
-              {etapaRodando === chave ? "Rodando..." : rotulo}
-            </button>
-          ))}
+        <div className="botoes-abas">
           <button
-            className="botao-tudo"
-            onClick={executarTudo}
-            disabled={etapaRodando !== null}
+            className={abaAtiva === "board" ? "aba-ativa" : ""}
+            onClick={() => setAbaAtiva("board")}
           >
-            {etapaRodando === "executar-tudo" ? "Rodando tudo..." : "Rodar tudo"}
+            Pipeline
+          </button>
+          <button
+            className={abaAtiva === "configuracoes" ? "aba-ativa" : ""}
+            onClick={() => setAbaAtiva("configuracoes")}
+          >
+            Configurações
           </button>
         </div>
+
+        {abaAtiva === "board" && (
+          <>
+            <div className="botoes-etapas">
+              <button onClick={buscarNoticias} disabled={etapaRodando !== null}>
+                {etapaRodando === "buscar" ? "Buscando..." : "Buscar notícias"}
+              </button>
+            </div>
+            <UsoGroq titulo="Groq" uso={usoGroq} />
+            <UsoGroq titulo="Gemini" uso={usoGemini} />
+            <UsoMistral uso={usoMistral} />
+          </>
+        )}
       </header>
 
-      {erro && <div className="erro">{erro}</div>}
+      {abaAtiva === "board" ? (
+        <>
+          {etapaRodando && (
+            <div className="progresso">
+              <div className="progresso-barra" />
+            </div>
+          )}
 
-      <Board noticias={noticias} onAbrir={setSelecionada} />
+          {erro && <div className="erro">{erro}</div>}
 
-      <DetalheModal
-        noticia={selecionada}
-        aoFechar={() => setSelecionada(null)}
-        aoAprovar={aprovar}
-        aprovando={aprovando}
-      />
+          <Board
+            noticias={noticias}
+            onAbrir={setSelecionada}
+            onMoverNoticia={moverNoticia}
+            onExcluir={excluir}
+            processando={processando}
+          />
+
+          <DetalheModal
+            noticia={selecionada}
+            aoFechar={() => setSelecionada(null)}
+            aoAprovar={aprovar}
+            aprovando={aprovando}
+          />
+        </>
+      ) : (
+        <Configuracoes />
+      )}
     </div>
   );
 }

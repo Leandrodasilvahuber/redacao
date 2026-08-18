@@ -1,3 +1,15 @@
+import LinkedInPreview from "./LinkedInPreview";
+
+const ESTADOS_COM_PREVIEW = ["ILUSTRADA", "PRONTA_PARA_PUBLICAR", "PUBLICADA"];
+
+function removerImagens(html) {
+  if (!html) return "";
+  return html
+    .replace(/<img[^>]*>/gi, "")
+    .replace(/<picture[\s\S]*?<\/picture>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
+}
+
 export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando }) {
   if (!noticia) return null;
 
@@ -11,10 +23,22 @@ export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando }
         </p>
         <a href={noticia.link} target="_blank" rel="noreferrer">Ver notícia original</a>
 
-        <Secao titulo="Resumo original" texto={noticia.resumoOriginal} html />
-        <Secao titulo="Texto redigido" texto={noticia.textoRedigido} />
-        <Secao titulo="Texto revisado" texto={noticia.textoRevisado} />
-        <Secao titulo="Texto final (pronto para o LinkedIn)" texto={noticia.textoFinal} />
+        {ESTADOS_COM_PREVIEW.includes(noticia.estado) && (
+          <div className="modal-secao">
+            <h3>Simulação do post no LinkedIn</h3>
+            <LinkedInPreview noticia={noticia} />
+          </div>
+        )}
+
+        {noticia.resumoOriginal && (
+          <div className="modal-secao">
+            <h3>Resumo original</h3>
+            <p
+              className="modal-texto modal-texto-resumido"
+              dangerouslySetInnerHTML={{ __html: removerImagens(noticia.resumoOriginal) }}
+            />
+          </div>
+        )}
 
         {noticia.estado === "PRONTA_PARA_PUBLICAR" && (
           <button className="botao-aprovar" onClick={() => aoAprovar(noticia.id)} disabled={aprovando}>
@@ -22,23 +46,18 @@ export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando }
           </button>
         )}
         {noticia.estado === "PUBLICADA" && (
-          <p className="modal-publicada">✅ Já publicada</p>
+          <div className="modal-secao modal-status-publicacao">
+            <p className={noticia.linkedinErro ? "modal-status-erro" : "modal-status-ok"}>
+              {noticia.linkedinErro
+                ? `❌ LinkedIn: ${noticia.linkedinErro}`
+                : "✅ LinkedIn: publicado"}
+            </p>
+            <p className={noticia.blogErro ? "modal-status-erro" : "modal-status-ok"}>
+              {noticia.blogErro ? `❌ Blog: ${noticia.blogErro}` : "✅ Blog: publicado"}
+            </p>
+          </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Secao({ titulo, texto, html }) {
-  if (!texto) return null;
-  return (
-    <div className="modal-secao">
-      <h3>{titulo}</h3>
-      {html ? (
-        <p dangerouslySetInnerHTML={{ __html: texto }} />
-      ) : (
-        <p className="modal-texto">{texto}</p>
-      )}
     </div>
   );
 }
