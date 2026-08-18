@@ -8,6 +8,10 @@ export function listaDeIlustracoes(svgIlustracao) {
   }
 }
 
+export function ehImagemRaster(conteudo) {
+  return typeof conteudo === "string" && conteudo.startsWith("data:image");
+}
+
 export function prepararSvgParaExibicao(svg) {
   if (!svg) return "";
   let limpo = svg
@@ -30,6 +34,10 @@ export function rasterizarSvgParaPng(svg, largura = 1200, altura = 627) {
   return new Promise((resolve, reject) => {
     if (!svg) {
       resolve(null);
+      return;
+    }
+    if (ehImagemRaster(svg)) {
+      resolve(svg);
       return;
     }
     const blob = new Blob([svg], { type: "image/svg+xml" });

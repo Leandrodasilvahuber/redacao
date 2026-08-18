@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { listaDeIlustracoes, prepararSvgParaExibicao } from "./svgUtils";
+import { ehImagemRaster, listaDeIlustracoes, prepararSvgParaExibicao } from "./svgUtils";
 
 const LIMITE_TEXTO_VISIVEL = 220;
 
@@ -70,10 +70,18 @@ export default function LinkedInPreview({ noticia }) {
 
       {ilustracoes.length > 0 && (
         <div className="li-galeria">
-          <div
-            className="li-imagem"
-            dangerouslySetInnerHTML={{ __html: prepararSvgParaExibicao(ilustracoes[indiceSeguro]) }}
-          />
+          {ehImagemRaster(ilustracoes[indiceSeguro]) ? (
+            <img
+              className="li-imagem li-imagem-raster"
+              src={ilustracoes[indiceSeguro]}
+              alt="Ilustração gerada por IA"
+            />
+          ) : (
+            <div
+              className="li-imagem"
+              dangerouslySetInnerHTML={{ __html: prepararSvgParaExibicao(ilustracoes[indiceSeguro]) }}
+            />
+          )}
           {ilustracoes.length > 1 && (
             <>
               <button

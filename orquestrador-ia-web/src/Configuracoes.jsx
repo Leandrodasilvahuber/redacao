@@ -17,6 +17,11 @@ const ESTILOS_ILUSTRACAO = [
   { valor: "CARTOON", rotulo: "Desenho cartoon" },
 ];
 
+const PROVEDORES_ILUSTRACAO = [
+  { valor: "GEMINI", rotulo: "Gemini (desenho SVG)" },
+  { valor: "FLUX", rotulo: "Flux Schnell (imagem gerada)" },
+];
+
 const CHAVES_API = [
   { chave: "groqApiKey", rotulo: "Groq" },
   { chave: "geminiApiKey", rotulo: "Gemini" },
@@ -43,6 +48,7 @@ function estadoInicial() {
     revisarPadraoLinkedin: true,
     atribuirFonte: false,
     estiloIlustracao: "ATUAL",
+    provedorIlustracao: "GEMINI",
     blogApiUrl: "",
     blogApiToken: "",
     blogIlustracaoPadrao: "TERMINAL",
@@ -79,6 +85,7 @@ export default function Configuracoes() {
         revisarPadraoLinkedin: dados.revisarPadraoLinkedin,
         atribuirFonte: dados.atribuirFonte,
         estiloIlustracao: dados.estiloIlustracao ?? "ATUAL",
+        provedorIlustracao: dados.provedorIlustracao ?? "GEMINI",
         blogApiUrl: dados.blogApiUrl ?? "",
         blogApiToken: "",
         blogIlustracaoPadrao: dados.blogIlustracaoPadrao ?? "TERMINAL",
@@ -228,6 +235,25 @@ export default function Configuracoes() {
 
       <section className="config-secao">
         <h2>Ilustrar</h2>
+        <p className="config-descricao">Quem desenha a ilustração de capa dos posts.</p>
+        <div className="config-checkboxes">
+          {PROVEDORES_ILUSTRACAO.map(({ valor, rotulo }) => (
+            <label className="config-radio" key={valor}>
+              <input
+                type="radio"
+                name="provedorIlustracao"
+                checked={form.provedorIlustracao === valor}
+                onChange={() => setForm((atual) => ({ ...atual, provedorIlustracao: valor }))}
+              />
+              {rotulo}
+            </label>
+          ))}
+        </div>
+        <p className="config-descricao">
+          Se o Gemini estiver selecionado e estourar a cota do dia, o sistema cai automaticamente para o
+          Flux Schnell (sem chave, praticamente ilimitado).
+        </p>
+        <p className="config-descricao">Estilo visual usado no desenho, com os dois provedores.</p>
         <div className="config-checkboxes">
           {ESTILOS_ILUSTRACAO.map(({ valor, rotulo }) => (
             <label className="config-radio" key={valor}>

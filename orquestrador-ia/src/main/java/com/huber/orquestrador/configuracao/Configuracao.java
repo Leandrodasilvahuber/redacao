@@ -43,6 +43,9 @@ public class Configuracao {
     @Column(nullable = false)
     private EstiloIlustracao estiloIlustracao;
 
+    @Enumerated(EnumType.STRING)
+    private ProvedorIlustracao provedorIlustracao;
+
     private String blogApiUrl;
 
     private String blogApiToken;
@@ -75,6 +78,7 @@ public class Configuracao {
         this.revisarPadraoLinkedin = true;
         this.atribuirFonte = false;
         this.estiloIlustracao = EstiloIlustracao.ATUAL;
+        this.provedorIlustracao = ProvedorIlustracao.GEMINI;
         this.blogApiUrl = "https://leandrohuber.duckdns.org";
         this.blogIlustracaoPadrao = BlogIlustracao.TERMINAL;
         this.atualizadoEm = Instant.now();
@@ -154,6 +158,14 @@ public class Configuracao {
 
     public void setEstiloIlustracao(EstiloIlustracao estiloIlustracao) {
         this.estiloIlustracao = estiloIlustracao;
+    }
+
+    public ProvedorIlustracao getProvedorIlustracao() {
+        return provedorIlustracao;
+    }
+
+    public void setProvedorIlustracao(ProvedorIlustracao provedorIlustracao) {
+        this.provedorIlustracao = provedorIlustracao;
     }
 
     public Instant getAtualizadoEm() {

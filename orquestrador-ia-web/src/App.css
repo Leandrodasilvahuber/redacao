@@ -627,6 +627,13 @@
   max-width: none;
 }
 
+.li-imagem-raster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .li-galeria-seta {
   position: absolute;
   top: 50%;

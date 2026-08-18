@@ -35,6 +35,7 @@ public class ConfiguracaoService {
                 config.isRevisarPadraoLinkedin(),
                 config.isAtribuirFonte(),
                 config.getEstiloIlustracao().name(),
+                getProvedorIlustracao().name(),
                 config.getBlogApiUrl(),
                 mascarar(config.getBlogApiToken()), temValor(config.getBlogApiToken()),
                 getBlogIlustracaoPadrao().name(),
@@ -74,6 +75,9 @@ public class ConfiguracaoService {
         EstiloIlustracao estilo = parseEstiloSeguro(request.estiloIlustracao());
         config.setEstiloIlustracao(estilo != null ? estilo : EstiloIlustracao.ATUAL);
 
+        ProvedorIlustracao provedorIlustracao = parseProvedorIlustracaoSeguro(request.provedorIlustracao());
+        config.setProvedorIlustracao(provedorIlustracao != null ? provedorIlustracao : ProvedorIlustracao.GEMINI);
+
         if (temValor(request.blogApiUrl())) {
             config.setBlogApiUrl(request.blogApiUrl().trim());
         }
@@ -110,6 +114,11 @@ public class ConfiguracaoService {
 
     public EstiloIlustracao getEstiloIlustracao() {
         return obter().getEstiloIlustracao();
+    }
+
+    public ProvedorIlustracao getProvedorIlustracao() {
+        ProvedorIlustracao provedor = obter().getProvedorIlustracao();
+        return provedor != null ? provedor : ProvedorIlustracao.GEMINI;
     }
 
     public boolean isRevisarFonteVeridica() {
@@ -197,6 +206,17 @@ public class ConfiguracaoService {
         }
         try {
             return EstiloIlustracao.valueOf(nome.trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private ProvedorIlustracao parseProvedorIlustracaoSeguro(String nome) {
+        if (nome == null) {
+            return null;
+        }
+        try {
+            return ProvedorIlustracao.valueOf(nome.trim());
         } catch (Exception e) {
             return null;
         }
