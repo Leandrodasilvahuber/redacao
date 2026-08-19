@@ -6,6 +6,7 @@ import com.huber.orquestrador.mistral.LimiteMistralAtingidoException;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
+import com.huber.orquestrador.noticia.PromocaoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,9 @@ public class SeletorService {
             Você é um editor de tecnologia que decide quais notícias merecem virar um post no LinkedIn
             para um público de profissionais de TI. Responda APENAS com a palavra SIM ou NÃO na primeira linha,
             indicando se a notícia é relevante, interessante e tem potencial de gerar boa discussão profissional.
+            Responda NÃO para publicidade, publieditorial, conteúdo patrocinado, comparativos de preço,
+            listas de "melhores ofertas/produtos para comprar" ou qualquer texto cujo objetivo principal seja
+            vender ou promover um produto específico, mesmo que mencione tecnologia.
             """;
 
     private final NoticiaRepository noticiaRepository;
@@ -68,6 +72,13 @@ public class SeletorService {
         for (Noticia noticia : pendentes) {
             if (jaSelecionadasHoje + selecionadas >= limiteDiario) {
                 break;
+            }
+
+            if (PromocaoUtil.pareceAnuncioOuPromocao(noticia.getTitulo())) {
+                log.info("Descartando notícia promocional/publicitária sem gastar chamada de IA: {}", noticia.getTitulo());
+                noticia.mudarEstado(EstadoNoticia.DESCARTADA);
+                noticiaRepository.save(noticia);
+                continue;
             }
 
             String pergunta = "Título: " + noticia.getTitulo() + "\nResumo: " + noticia.getResumoOriginal();
