@@ -5,7 +5,7 @@ import DetalheModal from "./DetalheModal";
 import UsoGroq from "./UsoGroq";
 import UsoMistral from "./UsoMistral";
 import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, listarNoticias, marcarPublicada, rodarEtapa } from "./api";
-import { PROXIMA_ETAPA } from "./estados";
+import { CONTADOR_POR_ETAPA, PROXIMA_ETAPA } from "./estados";
 import { listaDeIlustracoes, rasterizarSvgParaPng } from "./svgUtils";
 import "./App.css";
 
@@ -25,6 +25,12 @@ export default function App() {
   const [processando, setProcessando] = useState(null);
   const [aprovando, setAprovando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [aviso, setAviso] = useState(null);
+
+  function avisarTemporario(mensagem) {
+    setAviso(mensagem);
+    setTimeout(() => setAviso((atual) => (atual === mensagem ? null : atual)), 4000);
+  }
   const [usoGroq, setUsoGroq] = useState(null);
   const [usoGemini, setUsoGemini] = useState(null);
   const [usoMistral, setUsoMistral] = useState(null);
@@ -110,7 +116,16 @@ export default function App() {
         const imagemPngBase64 = await rasterizarIlustracao(noticia);
         await marcarPublicada(id, imagemPngBase64);
       } else {
-        await rodarEtapa(proxima.etapa, id);
+        const resultado = await rodarEtapa(proxima.etapa, id);
+        const chave = CONTADOR_POR_ETAPA[proxima.etapa];
+        if (chave && resultado?.[chave] === 0) {
+          const atualizada = (await listarNoticias()).find((n) => n.id === id);
+          if (atualizada?.estado === "DESCARTADA") {
+            avisarTemporario(`Descartada: "${noticia.titulo}" não passou nos critérios da IA.`);
+          } else {
+            avisarTemporario(`Não foi possível mover "${noticia.titulo}" agora. Tente de novo em instantes.`);
+          }
+        }
       }
       await carregar();
       await carregarUsoGroq();
@@ -192,6 +207,7 @@ export default function App() {
           )}
 
           {erro && <div className="erro">{erro}</div>}
+          {aviso && <div className="aviso">{aviso}</div>}
 
           <Board
             noticias={noticias}

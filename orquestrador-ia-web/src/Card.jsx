@@ -39,9 +39,7 @@ export default function Card({ noticia, onAbrir, onExcluir, processando }) {
         title="Excluir notícia"
         onClick={(e) => {
           e.stopPropagation();
-          if (window.confirm(`Excluir "${noticia.titulo}"?`)) {
-            onExcluir(noticia.id);
-          }
+          onExcluir(noticia.id);
         }}
       >
         ×

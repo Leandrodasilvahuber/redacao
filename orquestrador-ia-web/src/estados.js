@@ -16,6 +16,16 @@ export const FERRAMENTA_POR_ETAPA = {
   aprovar: "Aprovando",
 };
 
+// Chave do contador que cada etapa devolve em /pipeline/{etapa} (ex.: {"selecionadas": 1}),
+// usada para saber se a notícia realmente avançou ou se a IA/rota não moveu nada.
+export const CONTADOR_POR_ETAPA = {
+  selecionar: "selecionadas",
+  redigir: "redigidas",
+  revisar: "revisadas",
+  ilustrar: "ilustradas",
+  publicar: "prontasParaPublicar",
+};
+
 export const COLUNAS = [
   { estado: "BUSCADA", titulo: "Buscada", cor: "#64748b" },
   { estado: "SELECIONADA", titulo: "Selecionada", cor: "#0ea5e9" },
