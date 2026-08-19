@@ -46,6 +46,12 @@ public class Configuracao {
     @Enumerated(EnumType.STRING)
     private BibliotecaIcones bibliotecaIcones;
 
+    private Integer cotaGroq;
+
+    private Integer cotaGemini;
+
+    private Integer cotaMistral;
+
     private String linkedinClientId;
 
     private String linkedinClientSecret;
@@ -71,7 +77,10 @@ public class Configuracao {
         this.revisarPadraoLinkedin = true;
         this.atribuirFonte = false;
         this.blogApiUrl = "https://leandrohuber.duckdns.org";
-        this.bibliotecaIcones = BibliotecaIcones.MATERIAL_SYMBOLS;
+        this.bibliotecaIcones = BibliotecaIcones.TABLER;
+        this.cotaGroq = 50;
+        this.cotaGemini = 50;
+        this.cotaMistral = 50;
         this.atualizadoEm = Instant.now();
     }
 
@@ -169,6 +178,30 @@ public class Configuracao {
 
     public void setBibliotecaIcones(BibliotecaIcones bibliotecaIcones) {
         this.bibliotecaIcones = bibliotecaIcones;
+    }
+
+    public Integer getCotaGroq() {
+        return cotaGroq;
+    }
+
+    public void setCotaGroq(Integer cotaGroq) {
+        this.cotaGroq = cotaGroq;
+    }
+
+    public Integer getCotaGemini() {
+        return cotaGemini;
+    }
+
+    public void setCotaGemini(Integer cotaGemini) {
+        this.cotaGemini = cotaGemini;
+    }
+
+    public Integer getCotaMistral() {
+        return cotaMistral;
+    }
+
+    public void setCotaMistral(Integer cotaMistral) {
+        this.cotaMistral = cotaMistral;
     }
 
     public String getLinkedinClientId() {

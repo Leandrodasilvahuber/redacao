@@ -37,6 +37,7 @@ public class ConfiguracaoService {
                 config.getBlogApiUrl(),
                 mascarar(config.getBlogApiToken()), temValor(config.getBlogApiToken()),
                 getBibliotecaIcones().name(),
+                getCotaGroq(), getCotaGemini(), getCotaMistral(),
                 mascarar(config.getLinkedinClientId()), temValor(config.getLinkedinClientId()),
                 mascarar(config.getLinkedinClientSecret()), temValor(config.getLinkedinClientSecret()),
                 temValor(config.getLinkedinAccessToken()),
@@ -77,7 +78,11 @@ public class ConfiguracaoService {
             config.setBlogApiToken(request.blogApiToken().trim());
         }
         BibliotecaIcones bibliotecaIcones = parseBibliotecaIconesSegura(request.bibliotecaIcones());
-        config.setBibliotecaIcones(bibliotecaIcones != null ? bibliotecaIcones : BibliotecaIcones.MATERIAL_SYMBOLS);
+        config.setBibliotecaIcones(bibliotecaIcones != null ? bibliotecaIcones : BibliotecaIcones.TABLER);
+
+        config.setCotaGroq(cotaSegura(request.cotaGroq(), getCotaGroq()));
+        config.setCotaGemini(cotaSegura(request.cotaGemini(), getCotaGemini()));
+        config.setCotaMistral(cotaSegura(request.cotaMistral(), getCotaMistral()));
 
         if (temValor(request.linkedinClientId())) {
             config.setLinkedinClientId(request.linkedinClientId().trim());
@@ -142,7 +147,23 @@ public class ConfiguracaoService {
 
     public BibliotecaIcones getBibliotecaIcones() {
         BibliotecaIcones biblioteca = obter().getBibliotecaIcones();
-        return biblioteca != null ? biblioteca : BibliotecaIcones.MATERIAL_SYMBOLS;
+        return biblioteca != null ? biblioteca : BibliotecaIcones.TABLER;
+    }
+
+    /** Percentual (0-100) do limite gratuito de cada IA que o app tem permissão de usar por dia. */
+    public int getCotaGroq() {
+        Integer cota = obter().getCotaGroq();
+        return cota != null ? cota : 50;
+    }
+
+    public int getCotaGemini() {
+        Integer cota = obter().getCotaGemini();
+        return cota != null ? cota : 50;
+    }
+
+    public int getCotaMistral() {
+        Integer cota = obter().getCotaMistral();
+        return cota != null ? cota : 50;
     }
 
     public String getLinkedinClientId() {
@@ -192,6 +213,13 @@ public class ConfiguracaoService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private int cotaSegura(Integer valor, int padrao) {
+        if (valor == null) {
+            return padrao;
+        }
+        return Math.max(0, Math.min(100, valor));
     }
 
     private boolean temValor(String valor) {

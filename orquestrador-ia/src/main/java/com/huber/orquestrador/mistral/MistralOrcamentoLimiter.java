@@ -1,5 +1,6 @@
 package com.huber.orquestrador.mistral;
 
+import com.huber.orquestrador.configuracao.ConfiguracaoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -8,8 +9,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 
 /**
- * Acompanha o gasto estimado no crédito gratuito do Mistral (La Plateforme) e trava o uso
- * em 50% do crédito total (FATOR_SEGURANCA) para nunca chegar perto de estourar o saldo real.
+ * Acompanha o gasto estimado no crédito gratuito do Mistral (La Plateforme) e trava o uso na cota
+ * (%) configurada em Configurações (padrão 50% do crédito total, ajustável de 0 a 100 a qualquer
+ * momento) para nunca chegar perto de estourar o saldo real.
  *
  * O uso diário é persistido no banco (tabela mistral_uso_diario) para sobreviver a restart.
  */
@@ -17,21 +19,26 @@ import java.time.ZoneId;
 public class MistralOrcamentoLimiter {
 
     private static final Logger log = LoggerFactory.getLogger(MistralOrcamentoLimiter.class);
-    private static final double FATOR_SEGURANCA = 0.5;
 
     private final MistralOrcamentoProperties properties;
     private final MistralUsoDiarioRepository usoDiarioRepository;
-    private final double limiteSeguroUsd;
+    private final ConfiguracaoService configuracaoService;
 
     private MistralUsoDiario usoAtual;
 
-    public MistralOrcamentoLimiter(MistralOrcamentoProperties properties, MistralUsoDiarioRepository usoDiarioRepository) {
+    public MistralOrcamentoLimiter(MistralOrcamentoProperties properties, MistralUsoDiarioRepository usoDiarioRepository,
+                                    ConfiguracaoService configuracaoService) {
         this.properties = properties;
         this.usoDiarioRepository = usoDiarioRepository;
-        this.limiteSeguroUsd = properties.getCreditoUsd() * FATOR_SEGURANCA;
+        this.configuracaoService = configuracaoService;
         this.usoAtual = carregarOuCriar(LocalDate.now(ZoneId.systemDefault()));
-        log.info("Limite seguro do Mistral (metade do crédito de US$ {}): US$ {}. Gasto já registrado hoje: US$ {}.",
-                properties.getCreditoUsd(), limiteSeguroUsd, custoAtual());
+        log.info("Limite seguro do Mistral ({}% do crédito de US$ {}): US$ {}. Gasto já registrado hoje: US$ {}.",
+                configuracaoService.getCotaMistral(), properties.getCreditoUsd(), limiteSeguroUsd(), custoAtual());
+    }
+
+    private double limiteSeguroUsd() {
+        double fator = Math.max(0, Math.min(100, configuracaoService.getCotaMistral())) / 100.0;
+        return properties.getCreditoUsd() * fator;
     }
 
     private MistralUsoDiario carregarOuCriar(LocalDate dia) {
@@ -52,10 +59,11 @@ public class MistralOrcamentoLimiter {
      */
     public synchronized void reservarRequisicao() {
         renovarDiaSeNecessario();
+        double limiteSeguroUsd = limiteSeguroUsd();
         if (custoAtual() >= limiteSeguroUsd) {
             throw new LimiteMistralAtingidoException(
-                    "Limite seguro do crédito do Mistral atingido (US$ %.2f de US$ %.2f, 50%% do crédito gratuito). Tente novamente amanhã ou com outra chave."
-                            .formatted(limiteSeguroUsd, properties.getCreditoUsd()));
+                    "Limite seguro do crédito do Mistral atingido (US$ %.2f de US$ %.2f, %d%% do crédito gratuito). Tente novamente amanhã ou com outra chave."
+                            .formatted(limiteSeguroUsd, properties.getCreditoUsd(), configuracaoService.getCotaMistral()));
         }
         usoAtual.incrementarRequisicoes();
         usoDiarioRepository.save(usoAtual);
@@ -74,7 +82,7 @@ public class MistralOrcamentoLimiter {
      */
     public synchronized void registrarLimiteRealAtingido() {
         renovarDiaSeNecessario();
-        double deficitUsd = Math.max(0, limiteSeguroUsd - custoAtual());
+        double deficitUsd = Math.max(0, limiteSeguroUsd() - custoAtual());
         if (deficitUsd > 0) {
             double precoPorMilhao = properties.getPrecoSaidaPorMilhao() > 0
                     ? properties.getPrecoSaidaPorMilhao()
@@ -94,7 +102,7 @@ public class MistralOrcamentoLimiter {
                 usoAtual.getTokensEntrada(),
                 usoAtual.getTokensSaida(),
                 custoAtual(),
-                limiteSeguroUsd,
+                limiteSeguroUsd(),
                 properties.getCreditoUsd());
     }
 

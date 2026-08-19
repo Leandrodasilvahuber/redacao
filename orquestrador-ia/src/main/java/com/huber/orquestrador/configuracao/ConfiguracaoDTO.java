@@ -16,6 +16,9 @@ public class ConfiguracaoDTO {
             String blogApiUrl,
             String blogApiToken,
             String bibliotecaIcones,
+            Integer cotaGroq,
+            Integer cotaGemini,
+            Integer cotaMistral,
             String linkedinClientId,
             String linkedinClientSecret
     ) {
@@ -37,6 +40,9 @@ public class ConfiguracaoDTO {
             String blogApiTokenMascarado,
             boolean blogApiTokenConfigurado,
             String bibliotecaIcones,
+            int cotaGroq,
+            int cotaGemini,
+            int cotaMistral,
             String linkedinClientIdMascarado,
             boolean linkedinClientIdConfigurado,
             String linkedinClientSecretMascarado,

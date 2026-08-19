@@ -12,6 +12,14 @@ public final class IconeSvgUtil {
 
     private static final Pattern VIEW_BOX = Pattern.compile("viewBox=\"[^\"]*?\\s([0-9.]+)\\s+([0-9.]+)\"");
     private static final Pattern CONTEUDO_INTERNO = Pattern.compile("<svg[^>]*>(.*)</svg>", Pattern.DOTALL);
+    private static final Pattern STROKE_WIDTH = Pattern.compile("stroke-width=\"[0-9.]+\"");
+
+    /**
+     * Espessura de traço alvo já em escala do canvas final (1200x627), pra ícones de traço (Tabler,
+     * Phosphor outline etc.) ficarem com o mesmo peso visual dos ícones de linha desenhados à mão do
+     * blog, em vez de engrossar proporcionalmente ao tamanho do ícone.
+     */
+    private static final double ESPESSURA_TRACO_ALVO = 12;
 
     private IconeSvgUtil() {
     }
@@ -30,6 +38,12 @@ public final class IconeSvgUtil {
         interno = interno.replace("currentColor", cor);
 
         double escala = tamanho / Math.max(largura, altura);
+
+        if (interno.contains("stroke-width=")) {
+            String espessuraFixa = fmt(ESPESSURA_TRACO_ALVO / escala);
+            interno = STROKE_WIDTH.matcher(interno).replaceAll("stroke-width=\"" + espessuraFixa + "\"");
+        }
+
         double x = cx - (largura * escala) / 2;
         double y = cy - (altura * escala) / 2;
 

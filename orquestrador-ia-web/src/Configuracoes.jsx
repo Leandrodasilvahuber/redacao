@@ -15,11 +15,17 @@ const CHAVES_API = [
   { chave: "mistralApiKey", rotulo: "Mistral" },
 ];
 
+const COTAS_IA = [
+  { chave: "cotaGroq", rotulo: "Groq" },
+  { chave: "cotaGemini", rotulo: "Gemini" },
+  { chave: "cotaMistral", rotulo: "Mistral" },
+];
+
 const BIBLIOTECAS_ICONES = [
+  { valor: "TABLER", rotulo: "Tabler Icons (traço fino, igual ao do blog)" },
+  { valor: "PHOSPHOR", rotulo: "Phosphor" },
   { valor: "MATERIAL_SYMBOLS", rotulo: "Material Symbols" },
   { valor: "MATERIAL_ICONS", rotulo: "Material Icons" },
-  { valor: "TABLER", rotulo: "Tabler Icons" },
-  { valor: "PHOSPHOR", rotulo: "Phosphor" },
 ];
 
 function estadoInicial() {
@@ -34,7 +40,10 @@ function estadoInicial() {
     atribuirFonte: false,
     blogApiUrl: "",
     blogApiToken: "",
-    bibliotecaIcones: "MATERIAL_SYMBOLS",
+    bibliotecaIcones: "TABLER",
+    cotaGroq: 50,
+    cotaGemini: 50,
+    cotaMistral: 50,
     linkedinClientId: "",
     linkedinClientSecret: "",
   };
@@ -69,7 +78,10 @@ export default function Configuracoes() {
         atribuirFonte: dados.atribuirFonte,
         blogApiUrl: dados.blogApiUrl ?? "",
         blogApiToken: "",
-        bibliotecaIcones: dados.bibliotecaIcones ?? "MATERIAL_SYMBOLS",
+        bibliotecaIcones: dados.bibliotecaIcones ?? "TABLER",
+        cotaGroq: dados.cotaGroq ?? 50,
+        cotaGemini: dados.cotaGemini ?? 50,
+        cotaMistral: dados.cotaMistral ?? 50,
         linkedinClientId: "",
         linkedinClientSecret: "",
       });
@@ -150,6 +162,30 @@ export default function Configuracoes() {
               value={form[chave]}
               onChange={(e) => setForm((atual) => ({ ...atual, [chave]: e.target.value }))}
               autoComplete="off"
+            />
+          </div>
+        ))}
+      </section>
+
+      <section className="config-secao">
+        <h2>Cota de uso das IAs</h2>
+        <p className="config-descricao">
+          Percentual do limite gratuito diário de cada IA que o app tem permissão de usar. Em 0% a IA
+          fica desativada (pula direto pro próximo fallback); em 100% usa o limite real do plano, sem
+          margem de segurança.
+        </p>
+        {COTAS_IA.map(({ chave, rotulo }) => (
+          <div className="config-cota" key={chave}>
+            <div className="config-cota-cabecalho">
+              <span>{rotulo}</span>
+              <span className="config-cota-valor">{form[chave]}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={form[chave]}
+              onChange={(e) => setForm((atual) => ({ ...atual, [chave]: Number(e.target.value) }))}
             />
           </div>
         ))}

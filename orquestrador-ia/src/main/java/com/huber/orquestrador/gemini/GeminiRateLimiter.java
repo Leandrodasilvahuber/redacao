@@ -1,5 +1,6 @@
 package com.huber.orquestrador.gemini;
 
+import com.huber.orquestrador.configuracao.ConfiguracaoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -11,9 +12,9 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 
 /**
- * Impede que o app ultrapasse o plano gratuito do Gemini: aplica sempre metade
- * dos limites reais do plano (FATOR_SEGURANCA), independente do que estiver
- * configurado em application.properties.
+ * Impede que o app ultrapasse o plano gratuito do Gemini: aplica sobre os limites reais do plano a
+ * cota (%) configurada em Configurações (padrão 50%, ajustável de 0 a 100 a qualquer momento, sem
+ * precisar reiniciar o app), independente do que estiver em application.properties.
  *
  * O uso diário (requisições e tokens) é persistido no banco (tabela
  * gemini_uso_diario) para que reiniciar o app não zere o contador de segurança.
@@ -22,37 +23,56 @@ import java.util.Deque;
 public class GeminiRateLimiter {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiRateLimiter.class);
-    private static final double FATOR_SEGURANCA = 0.5;
     private static final long JANELA_MINUTO_MS = 60_000;
     private static final long ESPERA_ENTRE_TENTATIVAS_MS = 2_000;
 
-    private final int limiteRequisicoesPorMinuto;
-    private final int limiteRequisicoesPorDia;
-    private final int limiteTokensPorMinuto;
-    private final int limiteTokensPorDia;
+    private final int limiteRequisicoesPorMinutoPlano;
+    private final int limiteRequisicoesPorDiaPlano;
+    private final int limiteTokensPorMinutoPlano;
+    private final int limiteTokensPorDiaPlano;
 
     private final GeminiUsoDiarioRepository usoDiarioRepository;
+    private final ConfiguracaoService configuracaoService;
 
     private final Deque<Instant> requisicoesUltimoMinuto = new ArrayDeque<>();
     private final Deque<UsoToken> tokensUltimoMinuto = new ArrayDeque<>();
 
     private GeminiUsoDiario usoAtual;
 
-    public GeminiRateLimiter(GeminiLimiteProperties limitesDoPlano, GeminiUsoDiarioRepository usoDiarioRepository) {
-        this.limiteRequisicoesPorMinuto = aplicarFator(limitesDoPlano.getRequisicoesPorMinuto());
-        this.limiteRequisicoesPorDia = aplicarFator(limitesDoPlano.getRequisicoesPorDia());
-        this.limiteTokensPorMinuto = aplicarFator(limitesDoPlano.getTokensPorMinuto());
-        this.limiteTokensPorDia = aplicarFator(limitesDoPlano.getTokensPorDia());
+    public GeminiRateLimiter(GeminiLimiteProperties limitesDoPlano, GeminiUsoDiarioRepository usoDiarioRepository,
+                              ConfiguracaoService configuracaoService) {
+        this.limiteRequisicoesPorMinutoPlano = limitesDoPlano.getRequisicoesPorMinuto();
+        this.limiteRequisicoesPorDiaPlano = limitesDoPlano.getRequisicoesPorDia();
+        this.limiteTokensPorMinutoPlano = limitesDoPlano.getTokensPorMinuto();
+        this.limiteTokensPorDiaPlano = limitesDoPlano.getTokensPorDia();
         this.usoDiarioRepository = usoDiarioRepository;
+        this.configuracaoService = configuracaoService;
         this.usoAtual = carregarOuCriar(LocalDate.now(ZoneId.systemDefault()));
-        log.info("Limites efetivos do Gemini (metade do plano): {} req/min, {} req/dia, {} tokens/min, {} tokens/dia. "
+        log.info("Limites efetivos do Gemini ({}% do plano): {} req/min, {} req/dia, {} tokens/min, {} tokens/dia. "
                         + "Uso já registrado hoje: {} req, {} tokens.",
-                limiteRequisicoesPorMinuto, limiteRequisicoesPorDia, limiteTokensPorMinuto, limiteTokensPorDia,
-                usoAtual.getRequisicoes(), usoAtual.getTokens());
+                configuracaoService.getCotaGemini(), limiteRequisicoesPorMinuto(), limiteRequisicoesPorDia(),
+                limiteTokensPorMinuto(), limiteTokensPorDia(), usoAtual.getRequisicoes(), usoAtual.getTokens());
     }
 
-    private static int aplicarFator(int limiteDoPlano) {
-        return Math.max(1, (int) Math.floor(limiteDoPlano * FATOR_SEGURANCA));
+    private int aplicarCota(int limiteDoPlano) {
+        double fator = Math.max(0, Math.min(100, configuracaoService.getCotaGemini())) / 100.0;
+        return Math.max(1, (int) Math.floor(limiteDoPlano * fator));
+    }
+
+    private int limiteRequisicoesPorMinuto() {
+        return aplicarCota(limiteRequisicoesPorMinutoPlano);
+    }
+
+    private int limiteRequisicoesPorDia() {
+        return aplicarCota(limiteRequisicoesPorDiaPlano);
+    }
+
+    private int limiteTokensPorMinuto() {
+        return aplicarCota(limiteTokensPorMinutoPlano);
+    }
+
+    private int limiteTokensPorDia() {
+        return aplicarCota(limiteTokensPorDiaPlano);
     }
 
     private GeminiUsoDiario carregarOuCriar(LocalDate dia) {
@@ -67,18 +87,18 @@ public class GeminiRateLimiter {
         renovarDiaSeNecessario();
         purgarJanelaMinuto();
 
-        while (requisicoesUltimoMinuto.size() >= limiteRequisicoesPorMinuto
-                || somaTokensUltimoMinuto() >= limiteTokensPorMinuto) {
+        while (requisicoesUltimoMinuto.size() >= limiteRequisicoesPorMinuto()
+                || somaTokensUltimoMinuto() >= limiteTokensPorMinuto()) {
             log.info("Aguardando janela de uso do Gemini liberar (limite por minuto atingido)...");
             dormir();
             renovarDiaSeNecessario();
             purgarJanelaMinuto();
         }
 
-        if (usoAtual.getRequisicoes() >= limiteRequisicoesPorDia || usoAtual.getTokens() >= limiteTokensPorDia) {
+        if (usoAtual.getRequisicoes() >= limiteRequisicoesPorDia() || usoAtual.getTokens() >= limiteTokensPorDia()) {
             throw new LimiteGeminiAtingidoException(
-                    "Limite diário seguro do Gemini atingido (%d req/dia ou %d tokens/dia, 50%% do plano). Tente novamente amanhã."
-                            .formatted(limiteRequisicoesPorDia, limiteTokensPorDia));
+                    "Limite diário seguro do Gemini atingido (%d req/dia ou %d tokens/dia, %d%% do plano). Tente novamente amanhã."
+                            .formatted(limiteRequisicoesPorDia(), limiteTokensPorDia(), configuracaoService.getCotaGemini()));
         }
 
         requisicoesUltimoMinuto.add(Instant.now());
@@ -93,7 +113,7 @@ public class GeminiRateLimiter {
      */
     public synchronized void registrarLimiteRealAtingido() {
         renovarDiaSeNecessario();
-        usoAtual.somarTokens(Math.max(0, limiteTokensPorDia - usoAtual.getTokens()));
+        usoAtual.somarTokens(Math.max(0, limiteTokensPorDia() - usoAtual.getTokens()));
         usoDiarioRepository.save(usoAtual);
     }
 
@@ -108,13 +128,13 @@ public class GeminiRateLimiter {
         purgarJanelaMinuto();
         return new GeminiUsoStatus(
                 usoAtual.getRequisicoes(),
-                limiteRequisicoesPorDia,
+                limiteRequisicoesPorDia(),
                 usoAtual.getTokens(),
-                limiteTokensPorDia,
+                limiteTokensPorDia(),
                 requisicoesUltimoMinuto.size(),
-                limiteRequisicoesPorMinuto,
+                limiteRequisicoesPorMinuto(),
                 (int) somaTokensUltimoMinuto(),
-                limiteTokensPorMinuto);
+                limiteTokensPorMinuto());
     }
 
     private void renovarDiaSeNecessario() {

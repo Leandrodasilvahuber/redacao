@@ -18,14 +18,12 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * Monta a capa dos posts a partir de um ícone real (buscado no Iconify, sem IA de desenho) e de um
- * dos 4 layouts fixos em {@link LayoutIlustracao}. A IA (Gemini) só decide dois pedaços pequenos e
- * seguros: qual termo buscar no Iconify e qual "acabamento" (layout, cores, fonte) usar, para os
- * posts variarem e ficarem criativos sem depender de um desenho livre e instável.
+ * Monta a capa dos posts reproduzindo a identidade visual fixa do blog (fundo escuro quadriculado +
+ * ícone grande com brilho neon, sem título desenhado — o blog já mostra o título como texto). A IA
+ * (Gemini) só decide o termo de busca do ícone no Iconify e a cor de destaque entre as quatro cores
+ * da paleta do blog.
  */
 @Service
 public class IlustradorService {
@@ -45,59 +43,40 @@ public class IlustradorService {
             """;
 
     private static final String PROMPT_ACABAMENTO = """
-            Você decide o acabamento visual da capa de um post de LinkedIn sobre a notícia de tecnologia
-            indicada. A composição em si (posição do ícone, do texto) já é um template fixo — você só
-            escolhe:
+            Você escolhe o ícone da capa de um post sobre a notícia de tecnologia indicada. A capa segue
+            sempre a identidade visual fixa do blog (fundo escuro quadriculado com o ícone grande e
+            brilho neon no centro — sem título desenhado na imagem, o título já aparece como texto do
+            post) — você só escolhe:
             - "termoIcone": UMA palavra ou expressão curta EM INGLÊS, simples e concreta, para buscar um
               ícone relacionado ao tema no Iconify (ex.: "robot", "cloud", "database", "lock", "chip",
               "rocket"). Evite termos abstratos.
-            - "layout": um número de 1 a 4, varie entre os posts.
-            - "corFundoInicio" e "corFundoFim": cores hexadecimais (#rrggbb) para o gradiente/painel de
-              fundo. Mantenha SEMPRE um fundo escuro e sofisticado (preto ou tons quase pretos, como
-              #000000, #0a0a0a, #111111, #0d1117, podendo puxar levemente para a cor do tema) — nunca um
-              fundo claro ou muito colorido.
-            - "corDestaque": cor hexadecimal vibrante de destaque (forma geométrica atrás do ícone e cor
-              do próprio ícone), escolhida para combinar com o tema da notícia e contrastar bem com o
-              fundo escuro.
-            - "corTexto": cor hexadecimal do título — sempre bem clara (branco ou quase branco) para ler
-              bem sobre o fundo escuro.
-            - "fonte": uma destas quatro opções: "SANS_GEOMETRICA", "SERIF_EDITORIAL", "MONO_TECH",
-              "SANS_ARREDONDADA". O título é sempre em negrito (bold).
-            Varie a fonte e a cor de destaque de post para post, mas o fundo continua sempre escuro.
+            - "corDestaque": cor dos pontinhos de destaque ao lado do ícone (o ícone em si é sempre
+              ciano claro, igual ao line-art fixo do blog). Escolha UMA destas quatro cores da
+              identidade visual do blog, a que combinar melhor com o tema da notícia: "#00F0FF" (ciano,
+              uso geral/tech), "#8CF7FF" (ciano claro, dados e redes), "#FF2E9A" (magenta, segurança e
+              alertas), "#9D4EFF" (roxo, IA e produto). Varie entre os posts.
             """;
+
+    private static final List<String> CORES_BLOG = List.of("#00F0FF", "#8CF7FF", "#FF2E9A", "#9D4EFF");
 
     private static final Map<String, Object> SCHEMA_ACABAMENTO = Map.of(
             "type", "OBJECT",
             "properties", new LinkedHashMap<>(Map.of(
                     "termoIcone", Map.of("type", "STRING"),
-                    "layout", Map.of("type", "STRING", "enum", List.of("1", "2", "3", "4")),
-                    "corFundoInicio", Map.of("type", "STRING"),
-                    "corFundoFim", Map.of("type", "STRING"),
-                    "corDestaque", Map.of("type", "STRING"),
-                    "corTexto", Map.of("type", "STRING"),
-                    "fonte", Map.of("type", "STRING", "enum",
-                            List.of("SANS_GEOMETRICA", "SERIF_EDITORIAL", "MONO_TECH", "SANS_ARREDONDADA"))
+                    "corDestaque", Map.of("type", "STRING", "enum", CORES_BLOG)
             )),
-            "required", List.of("termoIcone", "layout", "corFundoInicio", "corFundoFim", "corDestaque",
-                    "corTexto", "fonte")
+            "required", List.of("termoIcone", "corDestaque")
     );
 
     private static final String PROMPT_ACABAMENTO_MISTRAL = PROMPT_ACABAMENTO + """
 
             Responda em JSON válido e apenas o JSON (sem texto fora dele, sem markdown), com exatamente
-            estas chaves: "termoIcone" (string), "layout" (string "1" a "4"), "corFundoInicio",
-            "corFundoFim", "corDestaque", "corTexto" (cores hexadecimais #rrggbb) e "fonte" (uma destas
-            quatro: "SANS_GEOMETRICA", "SERIF_EDITORIAL", "MONO_TECH", "SANS_ARREDONDADA").
+            estas chaves: "termoIcone" (string) e "corDestaque" (uma destas quatro strings, exatamente
+            como escrito: "#00F0FF", "#8CF7FF", "#FF2E9A", "#9D4EFF").
             """;
 
-    private static final Map<String, String> FONTES = Map.of(
-            "SANS_GEOMETRICA", "'Poppins','Segoe UI',sans-serif",
-            "SERIF_EDITORIAL", "'Georgia','Playfair Display',serif",
-            "MONO_TECH", "'JetBrains Mono','Courier New',monospace",
-            "SANS_ARREDONDADA", "'Verdana','Trebuchet MS',sans-serif"
-    );
-
-    private static final Pattern COR_HEX = Pattern.compile("^#[0-9a-fA-F]{6}$");
+    /** Fundo (var(--card-2)) da identidade visual do blog. */
+    private static final String COR_FUNDO_BLOG = "#171725";
 
     private static final String ICONE_FALLBACK_CPU =
             "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">"
@@ -188,14 +167,15 @@ public class IlustradorService {
     }
 
     /**
-     * Monta a capa: pede o acabamento (termo do ícone + layout + cores + fonte) ao Gemini, busca o
-     * ícone no Iconify e renderiza um dos 4 templates fixos. Cada etapa tem um fallback seguro, então
-     * a ilustração praticamente nunca falha por completo.
+     * Monta a capa: pede o acabamento (termo do ícone + cor de destaque) ao Gemini, busca o ícone no
+     * Iconify e renderiza no template fixo que reproduz a identidade visual do blog (fundo
+     * quadriculado escuro + ícone grande com brilho neon, sem título desenhado na imagem). Cada etapa
+     * tem um fallback seguro, então a ilustração praticamente nunca falha por completo.
      */
     private String gerarIlustracao(Noticia noticia, boolean[] geminiEsgotado, boolean[] mistralEsgotado) {
         Acabamento acabamento = gerarAcabamento(noticia, geminiEsgotado, mistralEsgotado);
         String iconeSvg = buscarIconeComFallback(acabamento.termoIcone());
-        return renderizar(acabamento, iconeSvg, noticia.getTitulo());
+        return renderizar(acabamento, iconeSvg);
     }
 
     /**
@@ -245,64 +225,84 @@ public class IlustradorService {
         }
     }
 
-    private String renderizar(Acabamento acabamento, String iconeSvg, String titulo) {
-        LayoutIlustracao layout = LayoutIlustracao.doIndice(acabamento.layout());
-        String icone = IconeSvgUtil.posicionar(iconeSvg, layout.iconeCx, layout.iconeCy, layout.iconeTamanho,
-                acabamento.corDestaque());
+    /** Cor de traço fixa dos ícones desenhados à mão do blog (var(--ink) do line-art, #8CF7FF). */
+    private static final String COR_ICONE_BLOG = "#8CF7FF";
 
-        double tituloX = layout == LayoutIlustracao.LATERAL ? 500
-                : layout == LayoutIlustracao.DIAGONAL ? 90
-                : 600;
-        int maxCaracteresPorLinha = layout == LayoutIlustracao.LATERAL || layout == LayoutIlustracao.DIAGONAL ? 22 : 30;
-        String tituloTspans = TituloSvgUtil.tspans(titulo, tituloX, 54, maxCaracteresPorLinha, 3);
+    private static final double ICONE_CX = 600;
+    private static final double ICONE_CY = 313;
+    private static final double ICONE_TAMANHO = 420;
 
-        String svg = layout.montar(icone, tituloTspans);
-        return svg
-                .replace("{{BG1}}", acabamento.corFundoInicio())
-                .replace("{{BG2}}", acabamento.corFundoFim())
-                .replace("{{ACCENT}}", acabamento.corDestaque())
-                .replace("{{TEXT}}", acabamento.corTexto())
-                .replace("{{FONT}}", FONTES.getOrDefault(acabamento.fonte(), FONTES.get("SANS_GEOMETRICA")));
+    /**
+     * Reproduz a capa exatamente como o bloco ".illustration" do blog: fundo escuro quadriculado
+     * (var(--card-2) + linhas em ciano), o ícone grande e centralizado sempre no ciano claro do
+     * line-art do blog, com brilho neon e dois pontinhos de destaque na cor do tema — igual ao
+     * acabamento dos ícones fixos (brain, cloud, terminal…) do blog. Sem título desenhado, já que o
+     * post no blog mostra o título como texto ao lado da imagem.
+     */
+    private String renderizar(Acabamento acabamento, String iconeSvg) {
+        String icone = IconeSvgUtil.posicionar(iconeSvg, ICONE_CX, ICONE_CY, ICONE_TAMANHO, COR_ICONE_BLOG);
+        String corSecundaria = corSecundaria(acabamento.corDestaque());
+        double meio = ICONE_TAMANHO / 2;
+        return """
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 627">
+                  <defs>
+                    <pattern id="grade-blog" width="48" height="48" patternUnits="userSpaceOnUse">
+                      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#00F0FF" stroke-opacity="0.16" stroke-width="1.6"/>
+                    </pattern>
+                    <filter id="brilho-neon" x="-60%%" y="-60%%" width="220%%" height="220%%">
+                      <feGaussianBlur stdDeviation="9" result="blur"/>
+                      <feMerge>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <rect width="1200" height="627" fill="%s"/>
+                  <rect width="1200" height="627" fill="url(#grade-blog)"/>
+                  <line x1="0" y1="1" x2="1200" y2="1" stroke="#22222E" stroke-width="2"/>
+                  <line x1="0" y1="626" x2="1200" y2="626" stroke="#22222E" stroke-width="2"/>
+                  <g filter="url(#brilho-neon)">
+                    %s
+                    <circle cx="%s" cy="%s" r="9" fill="%s"/>
+                    <circle cx="%s" cy="%s" r="6" fill="%s"/>
+                  </g>
+                </svg>
+                """.formatted(COR_FUNDO_BLOG, icone,
+                fmt(ICONE_CX + meio * 0.62), fmt(ICONE_CY - meio * 0.68), acabamento.corDestaque(),
+                fmt(ICONE_CX - meio * 0.66), fmt(ICONE_CY + meio * 0.7), corSecundaria);
     }
 
-    private record Acabamento(String termoIcone, int layout, String corFundoInicio, String corFundoFim,
-                               String corDestaque, String corTexto, String fonte) {
+    private static String corSecundaria(String corDestaque) {
+        int indice = CORES_BLOG.indexOf(corDestaque);
+        return CORES_BLOG.get((indice + 2) % CORES_BLOG.size());
+    }
+
+    private static String fmt(double valor) {
+        return String.valueOf(Math.round(valor * 100) / 100.0);
+    }
+
+    private record Acabamento(String termoIcone, String corDestaque) {
 
         static Acabamento doJson(ObjectMapper mapper, String json) {
             Map<?, ?> dados = mapper.readValue(json, Map.class);
             String termoIcone = textoSeguro(dados.get("termoIcone"), "chip");
-            int layout = layoutSeguro(dados.get("layout"));
-            String bg1 = hexSeguro(dados.get("corFundoInicio"), "#000000");
-            String bg2 = hexSeguro(dados.get("corFundoFim"), "#111111");
-            String destaque = hexSeguro(dados.get("corDestaque"), "#38bdf8");
-            String texto = hexSeguro(dados.get("corTexto"), "#e2e8f0");
-            String fonte = FONTES.containsKey(dados.get("fonte")) ? (String) dados.get("fonte") : "SANS_GEOMETRICA";
-            return new Acabamento(termoIcone, layout, bg1, bg2, destaque, texto, fonte);
+            String destaque = corBlogSegura(dados.get("corDestaque"));
+            return new Acabamento(termoIcone, destaque);
         }
 
         static Acabamento padrao(Noticia noticia) {
             long semente = noticia.getId() != null ? noticia.getId() : System.currentTimeMillis();
-            int layout = (int) (Math.abs(semente) % 4) + 1;
-            return new Acabamento("chip", layout, "#000000", "#111111", "#38bdf8", "#f8fafc",
-                    "SANS_GEOMETRICA");
+            String destaque = CORES_BLOG.get((int) (Math.abs(semente) % CORES_BLOG.size()));
+            return new Acabamento("chip", destaque);
         }
 
         private static String textoSeguro(Object valor, String padrao) {
             return valor instanceof String s && !s.isBlank() ? s.trim() : padrao;
         }
 
-        private static int layoutSeguro(Object valor) {
-            try {
-                return Integer.parseInt(String.valueOf(valor).trim());
-            } catch (Exception e) {
-                return 1;
-            }
-        }
-
-        private static String hexSeguro(Object valor, String padrao) {
-            String texto = valor instanceof String s ? s.trim() : "";
-            Matcher matcher = COR_HEX.matcher(texto);
-            return matcher.matches() ? texto : padrao;
+        private static String corBlogSegura(Object valor) {
+            String texto = valor instanceof String s ? s.trim().toUpperCase() : "";
+            return CORES_BLOG.stream().anyMatch(c -> c.equalsIgnoreCase(texto)) ? texto : CORES_BLOG.get(0);
         }
     }
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import Board from "./Board";
 import Configuracoes from "./Configuracoes";
 import DetalheModal from "./DetalheModal";
+import IndicadorIA from "./IndicadorIA";
 import UsoGroq from "./UsoGroq";
 import UsoMistral from "./UsoMistral";
 import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, listarNoticias, marcarPublicada, rodarEtapa } from "./api";
@@ -168,7 +169,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="topo">
-        <h1>Orquestrador de IAs — Notícias para LinkedIn</h1>
+        <div className="topo-titulo">
+          <h1>Orquestrador de IAs — Notícias para LinkedIn</h1>
+          <IndicadorIA usoGroq={usoGroq} usoGemini={usoGemini} usoMistral={usoMistral} />
+        </div>
         <div className="botoes-abas">
           <button
             className={abaAtiva === "board" ? "aba-ativa" : ""}
