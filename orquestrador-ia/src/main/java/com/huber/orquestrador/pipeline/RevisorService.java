@@ -81,6 +81,10 @@ public class RevisorService {
             } catch (LimiteMistralAtingidoException e) {
                 log.warn("Parando revisão: {}", e.getMessage());
                 break;
+            } catch (Exception e) {
+                log.warn("Falha ao revisar a notícia {} (deixando como está, tenta de novo depois): {}",
+                        noticia.getId(), e.getMessage());
+                continue;
             }
 
             noticia.setTextoRevisado(revisado);

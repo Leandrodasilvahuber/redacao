@@ -76,6 +76,10 @@ public class RedatorService {
             } catch (LimiteMistralAtingidoException e) {
                 log.warn("Parando redação: {}", e.getMessage());
                 break;
+            } catch (Exception e) {
+                log.warn("Falha ao redigir a notícia {} (deixando como está, tenta de novo depois): {}",
+                        noticia.getId(), e.getMessage());
+                continue;
             }
 
             noticia.setTextoRedigido(post);

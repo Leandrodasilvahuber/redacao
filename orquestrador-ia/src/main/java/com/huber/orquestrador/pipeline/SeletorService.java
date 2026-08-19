@@ -77,6 +77,10 @@ public class SeletorService {
             } catch (LimiteMistralAtingidoException e) {
                 log.warn("Parando seleção: {}", e.getMessage());
                 break;
+            } catch (Exception e) {
+                log.warn("Falha ao selecionar a notícia {} (deixando como está, tenta de novo depois): {}",
+                        noticia.getId(), e.getMessage());
+                continue;
             }
 
             if (resposta.toUpperCase().startsWith("SIM")) {
