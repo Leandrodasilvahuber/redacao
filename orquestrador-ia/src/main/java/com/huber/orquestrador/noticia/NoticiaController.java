@@ -84,8 +84,13 @@ public class NoticiaController {
     public Noticia atualizarCapaBlog(@PathVariable Long id, @RequestBody ImagemBase64Request body) {
         Noticia noticia = noticiaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notícia não encontrada"));
+        byte[] imagem = exigirImagem(body);
         try {
-            blogPublicadorService.atualizarCapa(noticia, exigirImagem(body));
+            blogPublicadorService.atualizarCapa(noticia, imagem);
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao atualizar a capa no blog: " + e.getMessage());
         }
@@ -100,8 +105,11 @@ public class NoticiaController {
     public Noticia atualizarCapaLinkedin(@PathVariable Long id, @RequestBody ImagemBase64Request body) {
         Noticia noticia = noticiaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notícia não encontrada"));
+        byte[] imagem = exigirImagem(body);
         try {
-            linkedInPublicadorService.republicarComNovaImagem(noticia, exigirImagem(body));
+            linkedInPublicadorService.republicarComNovaImagem(noticia, imagem);
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao republicar no LinkedIn: " + e.getMessage());
         }

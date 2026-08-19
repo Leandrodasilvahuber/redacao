@@ -71,6 +71,9 @@ public class BlogPublicadorService {
         if (noticia.getBlogPostId() == null || noticia.getBlogPostId().isBlank()) {
             throw new IllegalStateException("Notícia " + noticia.getId() + " não tem post no blog");
         }
+        if (imagemPng == null || imagemPng.length == 0) {
+            throw new IllegalArgumentException("Imagem da capa é obrigatória");
+        }
         String coverImageBase64 = Base64.getEncoder().encodeToString(imagemPng);
         blogClient.atualizarCapa(noticia.getBlogPostId(), coverImageBase64);
     }

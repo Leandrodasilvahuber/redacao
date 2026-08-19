@@ -45,9 +45,11 @@ public class LinkedInPublicadorService {
     }
 
     /**
-     * Exclui o post atual (se houver) e publica de novo com a imagem nova. A API do LinkedIn não
-     * permite editar a imagem de um post já publicado, então pra trocar a capa é preciso excluir e
-     * reenviar — usado pra atualizar posts antigos pro padrão visual atual. Ao contrário de
+     * Publica de novo com a imagem nova e só então exclui o post anterior (se houver). A API do
+     * LinkedIn não permite editar a imagem de um post já publicado, então pra trocar a capa é
+     * preciso publicar outro e excluir o antigo — usado pra atualizar posts antigos pro padrão
+     * visual atual. Publica antes de excluir de propósito: se a publicação nova falhar, o post
+     * antigo continua no ar em vez de a notícia ficar sem nenhum post publicado. Ao contrário de
      * {@link #publicar}, deixa a exceção subir: aqui é uma ação manual e pontual, então o chamador
      * precisa saber na hora se falhou, em vez de só logar.
      */
@@ -65,11 +67,18 @@ public class LinkedInPublicadorService {
                     "O acesso ao LinkedIn expirou. Acesse Configurações e reconecte o LinkedIn.");
         }
 
-        if (noticia.getLinkedinPostUrn() != null && !noticia.getLinkedinPostUrn().isBlank()) {
-            linkedInClient.excluirPost(accessToken, noticia.getLinkedinPostUrn());
-        }
+        String postUrnAnterior = noticia.getLinkedinPostUrn();
         String postUrn = linkedInClient.publicarPost(accessToken, personUrn, noticia.getTextoFinal(), imagemPng);
         noticia.marcarPublicadaNoLinkedin(postUrn);
+
+        if (postUrnAnterior != null && !postUrnAnterior.isBlank()) {
+            try {
+                linkedInClient.excluirPost(accessToken, postUrnAnterior);
+            } catch (Exception e) {
+                log.warn("Post novo publicado, mas falha ao excluir o post anterior {} do LinkedIn da notícia {}: {}",
+                        postUrnAnterior, noticia.getId(), e.getMessage());
+            }
+        }
     }
 
     public void excluir(Noticia noticia) {

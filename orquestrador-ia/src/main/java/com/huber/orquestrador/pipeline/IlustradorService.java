@@ -285,7 +285,7 @@ public class IlustradorService {
     }
 
     private static String corSecundaria(String corDestaque) {
-        int indice = CORES_BLOG.indexOf(corDestaque);
+        int indice = Math.max(0, CORES_BLOG.indexOf(corDestaque));
         return CORES_BLOG.get((indice + 2) % CORES_BLOG.size());
     }
 
