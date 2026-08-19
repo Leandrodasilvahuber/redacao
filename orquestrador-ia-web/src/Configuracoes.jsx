@@ -15,13 +15,11 @@ const CHAVES_API = [
   { chave: "mistralApiKey", rotulo: "Mistral" },
 ];
 
-const ILUSTRACOES_BLOG = [
-  { valor: "BRAIN", rotulo: "Cérebro" },
-  { valor: "CLOUD", rotulo: "Nuvem" },
-  { valor: "TERMINAL", rotulo: "Terminal" },
-  { valor: "GRAPH", rotulo: "Gráfico" },
-  { valor: "BRANCH", rotulo: "Branch (git)" },
-  { valor: "SHIELD", rotulo: "Escudo" },
+const BIBLIOTECAS_ICONES = [
+  { valor: "MATERIAL_SYMBOLS", rotulo: "Material Symbols" },
+  { valor: "MATERIAL_ICONS", rotulo: "Material Icons" },
+  { valor: "TABLER", rotulo: "Tabler Icons" },
+  { valor: "PHOSPHOR", rotulo: "Phosphor" },
 ];
 
 function estadoInicial() {
@@ -36,7 +34,7 @@ function estadoInicial() {
     atribuirFonte: false,
     blogApiUrl: "",
     blogApiToken: "",
-    blogIlustracaoPadrao: "TERMINAL",
+    bibliotecaIcones: "MATERIAL_SYMBOLS",
     linkedinClientId: "",
     linkedinClientSecret: "",
   };
@@ -71,7 +69,7 @@ export default function Configuracoes() {
         atribuirFonte: dados.atribuirFonte,
         blogApiUrl: dados.blogApiUrl ?? "",
         blogApiToken: "",
-        blogIlustracaoPadrao: dados.blogIlustracaoPadrao ?? "TERMINAL",
+        bibliotecaIcones: dados.bibliotecaIcones ?? "MATERIAL_SYMBOLS",
         linkedinClientId: "",
         linkedinClientSecret: "",
       });
@@ -244,15 +242,22 @@ export default function Configuracoes() {
             autoComplete="off"
           />
         </div>
-        <p className="config-descricao">Ícone padrão usado nos posts publicados no blog.</p>
+      </section>
+
+      <section className="config-secao">
+        <h2>Ilustração</h2>
+        <p className="config-descricao">
+          Biblioteca de ícones usada na capa dos posts. A IA escolhe o ícone de acordo com o tema de
+          cada notícia — aqui você só define o estilo visual da coleção pesquisada.
+        </p>
         <div className="config-checkboxes">
-          {ILUSTRACOES_BLOG.map(({ valor, rotulo }) => (
+          {BIBLIOTECAS_ICONES.map(({ valor, rotulo }) => (
             <label className="config-radio" key={valor}>
               <input
                 type="radio"
-                name="blogIlustracaoPadrao"
-                checked={form.blogIlustracaoPadrao === valor}
-                onChange={() => setForm((atual) => ({ ...atual, blogIlustracaoPadrao: valor }))}
+                name="bibliotecaIcones"
+                checked={form.bibliotecaIcones === valor}
+                onChange={() => setForm((atual) => ({ ...atual, bibliotecaIcones: valor }))}
               />
               {rotulo}
             </label>

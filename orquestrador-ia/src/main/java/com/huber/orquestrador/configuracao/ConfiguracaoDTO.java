@@ -15,7 +15,7 @@ public class ConfiguracaoDTO {
             boolean atribuirFonte,
             String blogApiUrl,
             String blogApiToken,
-            String blogIlustracaoPadrao,
+            String bibliotecaIcones,
             String linkedinClientId,
             String linkedinClientSecret
     ) {
@@ -36,7 +36,7 @@ public class ConfiguracaoDTO {
             String blogApiUrl,
             String blogApiTokenMascarado,
             boolean blogApiTokenConfigurado,
-            String blogIlustracaoPadrao,
+            String bibliotecaIcones,
             String linkedinClientIdMascarado,
             boolean linkedinClientIdConfigurado,
             String linkedinClientSecretMascarado,

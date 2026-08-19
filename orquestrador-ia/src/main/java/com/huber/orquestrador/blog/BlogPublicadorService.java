@@ -1,6 +1,5 @@
 package com.huber.orquestrador.blog;
 
-import com.huber.orquestrador.configuracao.ConfiguracaoService;
 import com.huber.orquestrador.noticia.Noticia;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,12 +14,17 @@ public class BlogPublicadorService {
     private static final Logger log = LoggerFactory.getLogger(BlogPublicadorService.class);
     private static final int TAMANHO_MAXIMO_LEAD = 255;
 
-    private final BlogClient blogClient;
-    private final ConfiguracaoService configuracaoService;
+    /**
+     * Valor fixo enviado no campo "illustration" da API do blog (metadado exigido pelo schema
+     * externo). A capa de fato é a imagem real gerada em {@code coverImageBase64}, com o ícone
+     * escolhido pela IA de acordo com o tema da notícia — este campo não influencia o visual.
+     */
+    private static final String ILUSTRACAO_FIXA = "terminal";
 
-    public BlogPublicadorService(BlogClient blogClient, ConfiguracaoService configuracaoService) {
+    private final BlogClient blogClient;
+
+    public BlogPublicadorService(BlogClient blogClient) {
         this.blogClient = blogClient;
-        this.configuracaoService = configuracaoService;
     }
 
     public void publicar(Noticia noticia, byte[] imagemPng) {
@@ -34,7 +38,7 @@ public class BlogPublicadorService {
 
             BlogClient.PostRequest post = new BlogClient.PostRequest(
                     "Orquestrador de IA",
-                    configuracaoService.getBlogIlustracaoPadrao().getValorNoBlog(),
+                    ILUSTRACAO_FIXA,
                     lead,
                     noticia.getTextoFinal(),
                     "",

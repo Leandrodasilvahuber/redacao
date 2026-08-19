@@ -36,7 +36,7 @@ public class ConfiguracaoService {
                 config.isAtribuirFonte(),
                 config.getBlogApiUrl(),
                 mascarar(config.getBlogApiToken()), temValor(config.getBlogApiToken()),
-                getBlogIlustracaoPadrao().name(),
+                getBibliotecaIcones().name(),
                 mascarar(config.getLinkedinClientId()), temValor(config.getLinkedinClientId()),
                 mascarar(config.getLinkedinClientSecret()), temValor(config.getLinkedinClientSecret()),
                 temValor(config.getLinkedinAccessToken()),
@@ -76,8 +76,8 @@ public class ConfiguracaoService {
         if (temValor(request.blogApiToken())) {
             config.setBlogApiToken(request.blogApiToken().trim());
         }
-        BlogIlustracao blogIlustracao = parseBlogIlustracaoSeguro(request.blogIlustracaoPadrao());
-        config.setBlogIlustracaoPadrao(blogIlustracao != null ? blogIlustracao : BlogIlustracao.TERMINAL);
+        BibliotecaIcones bibliotecaIcones = parseBibliotecaIconesSegura(request.bibliotecaIcones());
+        config.setBibliotecaIcones(bibliotecaIcones != null ? bibliotecaIcones : BibliotecaIcones.MATERIAL_SYMBOLS);
 
         if (temValor(request.linkedinClientId())) {
             config.setLinkedinClientId(request.linkedinClientId().trim());
@@ -140,9 +140,9 @@ public class ConfiguracaoService {
         return obter().getBlogApiToken();
     }
 
-    public BlogIlustracao getBlogIlustracaoPadrao() {
-        BlogIlustracao ilustracao = obter().getBlogIlustracaoPadrao();
-        return ilustracao != null ? ilustracao : BlogIlustracao.TERMINAL;
+    public BibliotecaIcones getBibliotecaIcones() {
+        BibliotecaIcones biblioteca = obter().getBibliotecaIcones();
+        return biblioteca != null ? biblioteca : BibliotecaIcones.MATERIAL_SYMBOLS;
     }
 
     public String getLinkedinClientId() {
@@ -183,12 +183,12 @@ public class ConfiguracaoService {
         }
     }
 
-    private BlogIlustracao parseBlogIlustracaoSeguro(String nome) {
+    private BibliotecaIcones parseBibliotecaIconesSegura(String nome) {
         if (nome == null) {
             return null;
         }
         try {
-            return BlogIlustracao.valueOf(nome.trim());
+            return BibliotecaIcones.valueOf(nome.trim());
         } catch (Exception e) {
             return null;
         }

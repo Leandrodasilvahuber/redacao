@@ -22,17 +22,17 @@ public class IconifyClient {
             .build();
 
     /**
-     * Busca o ícone mais relevante para o termo e devolve o SVG completo (com viewBox original).
-     * Lança exceção se nada for encontrado, para o chamador decidir o fallback.
+     * Busca o ícone mais relevante para o termo dentro da biblioteca informada e devolve o SVG
+     * completo (com viewBox original). Nunca sai da biblioteca escolhida: se ela não tiver nenhum
+     * ícone para o termo, lança exceção para o chamador usar o ícone genérico de fallback, em vez de
+     * misturar o estilo de outra coleção na capa.
      */
-    public String buscarIconeSvg(String termoBusca) {
-        SearchResponse resposta = restClient.get()
-                .uri("/search?query={termo}&limit=1", termoBusca)
-                .retrieve()
-                .body(SearchResponse.class);
+    public String buscarIconeSvg(String termoBusca, String prefixoBiblioteca) {
+        SearchResponse resposta = buscar(termoBusca, prefixoBiblioteca);
 
         if (resposta == null || resposta.icons() == null || resposta.icons().isEmpty()) {
-            throw new IllegalStateException("Nenhum ícone encontrado no Iconify para: " + termoBusca);
+            throw new IllegalStateException(
+                    "Nenhum ícone encontrado na biblioteca \"" + prefixoBiblioteca + "\" para: " + termoBusca);
         }
 
         String iconeCompleto = resposta.icons().get(0);
@@ -48,6 +48,18 @@ public class IconifyClient {
                 .uri("/{prefixo}/{nome}.svg", prefixo, nome)
                 .retrieve()
                 .body(String.class);
+    }
+
+    private SearchResponse buscar(String termoBusca, String prefixoBiblioteca) {
+        return prefixoBiblioteca != null && !prefixoBiblioteca.isBlank()
+                ? restClient.get()
+                        .uri("/search?query={termo}&limit=1&prefixes={prefixo}", termoBusca, prefixoBiblioteca)
+                        .retrieve()
+                        .body(SearchResponse.class)
+                : restClient.get()
+                        .uri("/search?query={termo}&limit=1", termoBusca)
+                        .retrieve()
+                        .body(SearchResponse.class);
     }
 
     private record SearchResponse(List<String> icons) {

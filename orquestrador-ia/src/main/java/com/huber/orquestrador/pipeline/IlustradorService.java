@@ -1,9 +1,12 @@
 package com.huber.orquestrador.pipeline;
 
+import com.huber.orquestrador.configuracao.ConfiguracaoService;
 import com.huber.orquestrador.gemini.GeminiClient;
 import com.huber.orquestrador.gemini.LimiteGeminiAtingidoException;
 import com.huber.orquestrador.iconify.IconeSvgUtil;
 import com.huber.orquestrador.iconify.IconifyClient;
+import com.huber.orquestrador.mistral.LimiteMistralAtingidoException;
+import com.huber.orquestrador.mistral.MistralClient;
 import com.huber.orquestrador.noticia.EstadoNoticia;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
@@ -79,6 +82,14 @@ public class IlustradorService {
                     "corTexto", "fonte")
     );
 
+    private static final String PROMPT_ACABAMENTO_MISTRAL = PROMPT_ACABAMENTO + """
+
+            Responda em JSON válido e apenas o JSON (sem texto fora dele, sem markdown), com exatamente
+            estas chaves: "termoIcone" (string), "layout" (string "1" a "4"), "corFundoInicio",
+            "corFundoFim", "corDestaque", "corTexto" (cores hexadecimais #rrggbb) e "fonte" (uma destas
+            quatro: "SANS_GEOMETRICA", "SERIF_EDITORIAL", "MONO_TECH", "SANS_ARREDONDADA").
+            """;
+
     private static final Map<String, String> FONTES = Map.of(
             "SANS_GEOMETRICA", "'Poppins','Segoe UI',sans-serif",
             "SERIF_EDITORIAL", "'Georgia','Playfair Display',serif",
@@ -95,14 +106,19 @@ public class IlustradorService {
 
     private final NoticiaRepository noticiaRepository;
     private final GeminiClient geminiClient;
+    private final MistralClient mistralClient;
     private final IconifyClient iconifyClient;
+    private final ConfiguracaoService configuracaoService;
     private final ObjectMapper objectMapper;
 
     public IlustradorService(NoticiaRepository noticiaRepository, GeminiClient geminiClient,
-                              IconifyClient iconifyClient, ObjectMapper objectMapper) {
+                              MistralClient mistralClient, IconifyClient iconifyClient,
+                              ConfiguracaoService configuracaoService, ObjectMapper objectMapper) {
         this.noticiaRepository = noticiaRepository;
         this.geminiClient = geminiClient;
+        this.mistralClient = mistralClient;
         this.iconifyClient = iconifyClient;
+        this.configuracaoService = configuracaoService;
         this.objectMapper = objectMapper;
     }
 
@@ -120,10 +136,11 @@ public class IlustradorService {
 
         int ilustradas = 0;
         boolean[] geminiEsgotado = {false};
+        boolean[] mistralEsgotado = {false};
 
         for (Noticia noticia : revisadas) {
-            String textoIlustrado = gerarTextoIlustrado(noticia, geminiEsgotado);
-            String ilustracao = gerarIlustracao(noticia, geminiEsgotado);
+            String textoIlustrado = gerarTextoIlustrado(noticia, geminiEsgotado, mistralEsgotado);
+            String ilustracao = gerarIlustracao(noticia, geminiEsgotado, mistralEsgotado);
 
             noticia.setTextoIlustrado(textoIlustrado);
             noticia.setSvgIlustracao(objectMapper.writeValueAsString(List.of(ilustracao)));
@@ -135,25 +152,39 @@ public class IlustradorService {
     }
 
     /**
-     * O texto do post sempre passa pelo Gemini (única IA de texto usada nesta etapa). Se a cota diária
-     * estourar ou a chamada falhar, usa o texto já revisado sem condensar.
+     * Prefere o Gemini para condensar o texto do post; quando a cota diária dele estourar, passa a
+     * usar o Mistral pelo resto da execução. Só devolve o texto revisado sem condensar se as duas IAs
+     * estiverem indisponíveis.
      */
-    private String gerarTextoIlustrado(Noticia noticia, boolean[] geminiEsgotado) {
-        if (geminiEsgotado[0]) {
-            return noticia.getTextoRevisado();
+    private String gerarTextoIlustrado(Noticia noticia, boolean[] geminiEsgotado, boolean[] mistralEsgotado) {
+        String pergunta = "Título: " + noticia.getTitulo() + "\nTexto revisado:\n" + noticia.getTextoRevisado();
+
+        if (!geminiEsgotado[0]) {
+            try {
+                return geminiClient.chat(PROMPT_TEXTO, pergunta);
+            } catch (LimiteGeminiAtingidoException e) {
+                log.warn("Limite do Gemini atingido, passando a usar o Mistral para condensar o texto do post: {}",
+                        e.getMessage());
+                geminiEsgotado[0] = true;
+            } catch (Exception e) {
+                log.warn("Falha ao gerar texto do post para a notícia {} via Gemini (usando texto revisado sem condensar): {}",
+                        noticia.getId(), e.getMessage());
+                return noticia.getTextoRevisado();
+            }
         }
-        try {
-            String pergunta = "Título: " + noticia.getTitulo() + "\nTexto revisado:\n" + noticia.getTextoRevisado();
-            return geminiClient.chat(PROMPT_TEXTO, pergunta);
-        } catch (LimiteGeminiAtingidoException e) {
-            log.warn("Limite do Gemini atingido, usando o texto revisado sem condensar: {}", e.getMessage());
-            geminiEsgotado[0] = true;
-            return noticia.getTextoRevisado();
-        } catch (Exception e) {
-            log.warn("Falha ao gerar texto do post para a notícia {} (usando texto revisado sem condensar): {}",
-                    noticia.getId(), e.getMessage());
-            return noticia.getTextoRevisado();
+
+        if (!mistralEsgotado[0]) {
+            try {
+                return mistralClient.chat(PROMPT_TEXTO, pergunta);
+            } catch (LimiteMistralAtingidoException e) {
+                log.warn("Limite do Mistral atingido, usando o texto revisado sem condensar: {}", e.getMessage());
+                mistralEsgotado[0] = true;
+            } catch (Exception e) {
+                log.warn("Falha ao gerar texto do post para a notícia {} via Mistral (usando texto revisado sem condensar): {}",
+                        noticia.getId(), e.getMessage());
+            }
         }
+        return noticia.getTextoRevisado();
     }
 
     /**
@@ -161,23 +192,44 @@ public class IlustradorService {
      * ícone no Iconify e renderiza um dos 4 templates fixos. Cada etapa tem um fallback seguro, então
      * a ilustração praticamente nunca falha por completo.
      */
-    private String gerarIlustracao(Noticia noticia, boolean[] geminiEsgotado) {
-        Acabamento acabamento = gerarAcabamento(noticia, geminiEsgotado);
+    private String gerarIlustracao(Noticia noticia, boolean[] geminiEsgotado, boolean[] mistralEsgotado) {
+        Acabamento acabamento = gerarAcabamento(noticia, geminiEsgotado, mistralEsgotado);
         String iconeSvg = buscarIconeComFallback(acabamento.termoIcone());
         return renderizar(acabamento, iconeSvg, noticia.getTitulo());
     }
 
-    private Acabamento gerarAcabamento(Noticia noticia, boolean[] geminiEsgotado) {
+    /**
+     * Prefere o Gemini; quando a cota diária dele estourar, passa a pedir o acabamento ao Mistral
+     * (que ainda escolhe o termo do ícone de acordo com o tema da notícia) pelo resto da execução.
+     * Só cai no acabamento fixo se as duas IAs estiverem indisponíveis.
+     */
+    private Acabamento gerarAcabamento(Noticia noticia, boolean[] geminiEsgotado, boolean[] mistralEsgotado) {
+        String pedido = "Título: " + noticia.getTitulo();
+
         if (!geminiEsgotado[0]) {
             try {
-                String pedido = "Título: " + noticia.getTitulo();
                 String json = geminiClient.chat(PROMPT_ACABAMENTO, pedido, SCHEMA_ACABAMENTO);
                 return Acabamento.doJson(objectMapper, json);
             } catch (LimiteGeminiAtingidoException e) {
-                log.warn("Limite do Gemini atingido, usando acabamento padrão: {}", e.getMessage());
+                log.warn("Limite do Gemini atingido, passando a usar o Mistral para o acabamento da capa: {}",
+                        e.getMessage());
                 geminiEsgotado[0] = true;
             } catch (Exception e) {
-                log.warn("Falha ao decidir o acabamento da capa para a notícia {}, usando padrão: {}",
+                log.warn("Falha ao decidir o acabamento da capa para a notícia {} via Gemini, usando padrão: {}",
+                        noticia.getId(), e.getMessage());
+                return Acabamento.padrao(noticia);
+            }
+        }
+
+        if (!mistralEsgotado[0]) {
+            try {
+                String json = mistralClient.chat(PROMPT_ACABAMENTO_MISTRAL, pedido, true);
+                return Acabamento.doJson(objectMapper, json);
+            } catch (LimiteMistralAtingidoException e) {
+                log.warn("Limite do Mistral atingido, usando acabamento padrão: {}", e.getMessage());
+                mistralEsgotado[0] = true;
+            } catch (Exception e) {
+                log.warn("Falha ao decidir o acabamento da capa para a notícia {} via Mistral, usando padrão: {}",
                         noticia.getId(), e.getMessage());
             }
         }
@@ -186,7 +238,7 @@ public class IlustradorService {
 
     private String buscarIconeComFallback(String termoIcone) {
         try {
-            return iconifyClient.buscarIconeSvg(termoIcone);
+            return iconifyClient.buscarIconeSvg(termoIcone, configuracaoService.getBibliotecaIcones().getPrefixoIconify());
         } catch (Exception e) {
             log.warn("Falha ao buscar ícone \"{}\" no Iconify, usando ícone genérico: {}", termoIcone, e.getMessage());
             return ICONE_FALLBACK_CPU;
@@ -218,7 +270,7 @@ public class IlustradorService {
 
         static Acabamento doJson(ObjectMapper mapper, String json) {
             Map<?, ?> dados = mapper.readValue(json, Map.class);
-            String termoIcone = textoSeguro(dados.get("termoIcone"), "technology");
+            String termoIcone = textoSeguro(dados.get("termoIcone"), "chip");
             int layout = layoutSeguro(dados.get("layout"));
             String bg1 = hexSeguro(dados.get("corFundoInicio"), "#000000");
             String bg2 = hexSeguro(dados.get("corFundoFim"), "#111111");
@@ -231,7 +283,7 @@ public class IlustradorService {
         static Acabamento padrao(Noticia noticia) {
             long semente = noticia.getId() != null ? noticia.getId() : System.currentTimeMillis();
             int layout = (int) (Math.abs(semente) % 4) + 1;
-            return new Acabamento("technology", layout, "#000000", "#111111", "#38bdf8", "#f8fafc",
+            return new Acabamento("chip", layout, "#000000", "#111111", "#38bdf8", "#f8fafc",
                     "SANS_GEOMETRICA");
         }
 

@@ -44,7 +44,7 @@ public class Configuracao {
     private String blogApiToken;
 
     @Enumerated(EnumType.STRING)
-    private BlogIlustracao blogIlustracaoPadrao;
+    private BibliotecaIcones bibliotecaIcones;
 
     private String linkedinClientId;
 
@@ -71,7 +71,7 @@ public class Configuracao {
         this.revisarPadraoLinkedin = true;
         this.atribuirFonte = false;
         this.blogApiUrl = "https://leandrohuber.duckdns.org";
-        this.blogIlustracaoPadrao = BlogIlustracao.TERMINAL;
+        this.bibliotecaIcones = BibliotecaIcones.MATERIAL_SYMBOLS;
         this.atualizadoEm = Instant.now();
     }
 
@@ -163,12 +163,12 @@ public class Configuracao {
         this.blogApiToken = blogApiToken;
     }
 
-    public BlogIlustracao getBlogIlustracaoPadrao() {
-        return blogIlustracaoPadrao;
+    public BibliotecaIcones getBibliotecaIcones() {
+        return bibliotecaIcones;
     }
 
-    public void setBlogIlustracaoPadrao(BlogIlustracao blogIlustracaoPadrao) {
-        this.blogIlustracaoPadrao = blogIlustracaoPadrao;
+    public void setBibliotecaIcones(BibliotecaIcones bibliotecaIcones) {
+        this.bibliotecaIcones = bibliotecaIcones;
     }
 
     public String getLinkedinClientId() {
