@@ -24,8 +24,6 @@ public class Configuracao {
 
     private String mistralApiKey;
 
-    private String ideogramApiKey;
-
     @Column(nullable = false)
     private String criteriosBusca;
 
@@ -40,13 +38,6 @@ public class Configuracao {
 
     @Column(nullable = false)
     private boolean atribuirFonte;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EstiloIlustracao estiloIlustracao;
-
-    @Enumerated(EnumType.STRING)
-    private ProvedorIlustracao provedorIlustracao;
 
     private String blogApiUrl;
 
@@ -79,8 +70,6 @@ public class Configuracao {
         this.revisarEstrutura = true;
         this.revisarPadraoLinkedin = true;
         this.atribuirFonte = false;
-        this.estiloIlustracao = EstiloIlustracao.ATUAL;
-        this.provedorIlustracao = ProvedorIlustracao.GEMINI;
         this.blogApiUrl = "https://leandrohuber.duckdns.org";
         this.blogIlustracaoPadrao = BlogIlustracao.TERMINAL;
         this.atualizadoEm = Instant.now();
@@ -112,14 +101,6 @@ public class Configuracao {
 
     public void setMistralApiKey(String mistralApiKey) {
         this.mistralApiKey = mistralApiKey;
-    }
-
-    public String getIdeogramApiKey() {
-        return ideogramApiKey;
-    }
-
-    public void setIdeogramApiKey(String ideogramApiKey) {
-        this.ideogramApiKey = ideogramApiKey;
     }
 
     public String getCriteriosBusca() {
@@ -160,22 +141,6 @@ public class Configuracao {
 
     public void setAtribuirFonte(boolean atribuirFonte) {
         this.atribuirFonte = atribuirFonte;
-    }
-
-    public EstiloIlustracao getEstiloIlustracao() {
-        return estiloIlustracao;
-    }
-
-    public void setEstiloIlustracao(EstiloIlustracao estiloIlustracao) {
-        this.estiloIlustracao = estiloIlustracao;
-    }
-
-    public ProvedorIlustracao getProvedorIlustracao() {
-        return provedorIlustracao;
-    }
-
-    public void setProvedorIlustracao(ProvedorIlustracao provedorIlustracao) {
-        this.provedorIlustracao = provedorIlustracao;
     }
 
     public Instant getAtualizadoEm() {

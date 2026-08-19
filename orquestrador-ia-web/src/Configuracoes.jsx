@@ -9,25 +9,10 @@ const CRITERIOS_BUSCA = [
   { valor: "TECNICAS", rotulo: "Técnicas" },
 ];
 
-const ESTILOS_ILUSTRACAO = [
-  { valor: "ATUAL", rotulo: "Estilo atual" },
-  { valor: "BITS_8", rotulo: "8 bits" },
-  { valor: "BITS_16", rotulo: "16 bits" },
-  { valor: "BITS_32", rotulo: "32 bits" },
-  { valor: "CARTOON", rotulo: "Desenho cartoon" },
-];
-
-const PROVEDORES_ILUSTRACAO = [
-  { valor: "GEMINI", rotulo: "Gemini (desenho SVG)" },
-  { valor: "IDEOGRAM", rotulo: "Ideogram (imagem gerada, 25/dia grátis)" },
-  { valor: "FLUX", rotulo: "Flux Schnell (imagem gerada)" },
-];
-
 const CHAVES_API = [
   { chave: "groqApiKey", rotulo: "Groq" },
   { chave: "geminiApiKey", rotulo: "Gemini" },
   { chave: "mistralApiKey", rotulo: "Mistral" },
-  { chave: "ideogramApiKey", rotulo: "Ideogram" },
 ];
 
 const ILUSTRACOES_BLOG = [
@@ -44,14 +29,11 @@ function estadoInicial() {
     groqApiKey: "",
     geminiApiKey: "",
     mistralApiKey: "",
-    ideogramApiKey: "",
     criteriosBusca: [],
     revisarFonteVeridica: true,
     revisarEstrutura: true,
     revisarPadraoLinkedin: true,
     atribuirFonte: false,
-    estiloIlustracao: "ATUAL",
-    provedorIlustracao: "GEMINI",
     blogApiUrl: "",
     blogApiToken: "",
     blogIlustracaoPadrao: "TERMINAL",
@@ -82,14 +64,11 @@ export default function Configuracoes() {
         groqApiKey: "",
         geminiApiKey: "",
         mistralApiKey: "",
-        ideogramApiKey: "",
         criteriosBusca: dados.criteriosBusca ?? [],
         revisarFonteVeridica: dados.revisarFonteVeridica,
         revisarEstrutura: dados.revisarEstrutura,
         revisarPadraoLinkedin: dados.revisarPadraoLinkedin,
         atribuirFonte: dados.atribuirFonte,
-        estiloIlustracao: dados.estiloIlustracao ?? "ATUAL",
-        provedorIlustracao: dados.provedorIlustracao ?? "GEMINI",
         blogApiUrl: dados.blogApiUrl ?? "",
         blogApiToken: "",
         blogIlustracaoPadrao: dados.blogIlustracaoPadrao ?? "TERMINAL",
@@ -124,7 +103,6 @@ export default function Configuracoes() {
         groqApiKey: "",
         geminiApiKey: "",
         mistralApiKey: "",
-        ideogramApiKey: "",
         blogApiToken: "",
         linkedinClientId: "",
         linkedinClientSecret: "",
@@ -141,13 +119,11 @@ export default function Configuracoes() {
     groqApiKey: status.groqApiKeyMascarada,
     geminiApiKey: status.geminiApiKeyMascarada,
     mistralApiKey: status.mistralApiKeyMascarada,
-    ideogramApiKey: status.ideogramApiKeyMascarada,
   };
   const configuradaPorChave = {
     groqApiKey: status.groqApiKeyConfigurada,
     geminiApiKey: status.geminiApiKeyConfigurada,
     mistralApiKey: status.mistralApiKeyConfigurada,
-    ideogramApiKey: status.ideogramApiKeyConfigurada,
   };
 
   if (carregando) {
@@ -238,42 +214,6 @@ export default function Configuracoes() {
           />
           Atribuir fonte da notícia no texto final
         </label>
-      </section>
-
-      <section className="config-secao">
-        <h2>Ilustrar</h2>
-        <p className="config-descricao">Quem desenha a ilustração de capa dos posts.</p>
-        <div className="config-checkboxes">
-          {PROVEDORES_ILUSTRACAO.map(({ valor, rotulo }) => (
-            <label className="config-radio" key={valor}>
-              <input
-                type="radio"
-                name="provedorIlustracao"
-                checked={form.provedorIlustracao === valor}
-                onChange={() => setForm((atual) => ({ ...atual, provedorIlustracao: valor }))}
-              />
-              {rotulo}
-            </label>
-          ))}
-        </div>
-        <p className="config-descricao">
-          Se o Gemini estiver selecionado e estourar a cota do dia, o sistema cai automaticamente para o
-          Flux Schnell (sem chave, praticamente ilimitado).
-        </p>
-        <p className="config-descricao">Estilo visual usado no desenho, com os dois provedores.</p>
-        <div className="config-checkboxes">
-          {ESTILOS_ILUSTRACAO.map(({ valor, rotulo }) => (
-            <label className="config-radio" key={valor}>
-              <input
-                type="radio"
-                name="estiloIlustracao"
-                checked={form.estiloIlustracao === valor}
-                onChange={() => setForm((atual) => ({ ...atual, estiloIlustracao: valor }))}
-              />
-              {rotulo}
-            </label>
-          ))}
-        </div>
       </section>
 
       <section className="config-secao">

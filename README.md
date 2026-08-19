@@ -17,14 +17,14 @@ redacao/
 2. **Seleção** — escolhe as notícias mais relevantes do dia (limite em `selecao.limite-diario`).
 3. **Redação** — gera o texto usando Groq/Gemini/Mistral, respeitando limites de uso de cada provedor.
 4. **Revisão** — revisa o texto gerado.
-5. **Ilustração** — gera uma imagem via Ideogram, Gemini ou Flux (Pollinations), com fallback automático entre provedores.
+5. **Ilustração** — Gemini escolhe um ícone (buscado no Iconify) e o acabamento (layout, cores, fonte) para montar a capa a partir de um dos 4 templates fixos.
 6. **Publicação** — publica no blog externo e/ou no LinkedIn (OAuth).
 
 ## Pré-requisitos
 
 - Java 17+
 - Node.js 18+
-- Chaves de API: Groq, Gemini e Mistral (obrigatórias); Ideogram e LinkedIn (opcionais)
+- Chaves de API: Groq, Gemini e Mistral (obrigatórias); LinkedIn (opcional). O Iconify (busca de ícones) não precisa de chave.
 
 ## Configuração
 
@@ -41,7 +41,6 @@ Variáveis principais (veja `orquestrador-ia/.env.example` para a lista completa
 | `GROQ_API_KEY` | sim | Chave da API Groq |
 | `GEMINI_API_KEY` | sim | Chave da API Gemini |
 | `MISTRAL_API_KEY` | sim | Chave da API Mistral |
-| `IDEOGRAM_API_KEY` | não | Habilita o Ideogram como provedor de ilustração |
 | `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` | não | Necessárias para publicar no LinkedIn |
 | `BLOG_API_URL` / `BLOG_API_TOKEN` | não | Necessárias para publicar no blog externo |
 
@@ -76,7 +75,7 @@ Acesse `http://localhost:5180`.
 
 ## Tecnologias
 
-**Backend:** Spring Boot, Spring Data JPA, H2 (arquivo local), Rome (parsing de RSS), integrações com Groq, Gemini, Mistral, Ideogram e LinkedIn.
+**Backend:** Spring Boot, Spring Data JPA, H2 (arquivo local), Rome (parsing de RSS), integrações com Groq, Gemini, Mistral, Iconify e LinkedIn.
 
 **Frontend:** React 19, Vite.
 

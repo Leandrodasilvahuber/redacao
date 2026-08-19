@@ -29,14 +29,11 @@ public class ConfiguracaoService {
                 mascarar(config.getGroqApiKey()), temValor(config.getGroqApiKey()),
                 mascarar(config.getGeminiApiKey()), temValor(config.getGeminiApiKey()),
                 mascarar(config.getMistralApiKey()), temValor(config.getMistralApiKey()),
-                mascarar(config.getIdeogramApiKey()), temValor(config.getIdeogramApiKey()),
                 parseCriterios(config.getCriteriosBusca()).stream().map(Enum::name).collect(Collectors.toList()),
                 config.isRevisarFonteVeridica(),
                 config.isRevisarEstrutura(),
                 config.isRevisarPadraoLinkedin(),
                 config.isAtribuirFonte(),
-                config.getEstiloIlustracao().name(),
-                getProvedorIlustracao().name(),
                 config.getBlogApiUrl(),
                 mascarar(config.getBlogApiToken()), temValor(config.getBlogApiToken()),
                 getBlogIlustracaoPadrao().name(),
@@ -60,9 +57,6 @@ public class ConfiguracaoService {
         if (temValor(request.mistralApiKey())) {
             config.setMistralApiKey(request.mistralApiKey().trim());
         }
-        if (temValor(request.ideogramApiKey())) {
-            config.setIdeogramApiKey(request.ideogramApiKey().trim());
-        }
 
         List<String> criterios = request.criteriosBusca() != null ? request.criteriosBusca() : List.of();
         String criteriosValidos = criterios.stream()
@@ -75,12 +69,6 @@ public class ConfiguracaoService {
         config.setRevisarEstrutura(request.revisarEstrutura());
         config.setRevisarPadraoLinkedin(request.revisarPadraoLinkedin());
         config.setAtribuirFonte(request.atribuirFonte());
-
-        EstiloIlustracao estilo = parseEstiloSeguro(request.estiloIlustracao());
-        config.setEstiloIlustracao(estilo != null ? estilo : EstiloIlustracao.ATUAL);
-
-        ProvedorIlustracao provedorIlustracao = parseProvedorIlustracaoSeguro(request.provedorIlustracao());
-        config.setProvedorIlustracao(provedorIlustracao != null ? provedorIlustracao : ProvedorIlustracao.GEMINI);
 
         if (temValor(request.blogApiUrl())) {
             config.setBlogApiUrl(request.blogApiUrl().trim());
@@ -116,15 +104,6 @@ public class ConfiguracaoService {
         return parseCriterios(obter().getCriteriosBusca());
     }
 
-    public EstiloIlustracao getEstiloIlustracao() {
-        return obter().getEstiloIlustracao();
-    }
-
-    public ProvedorIlustracao getProvedorIlustracao() {
-        ProvedorIlustracao provedor = obter().getProvedorIlustracao();
-        return provedor != null ? provedor : ProvedorIlustracao.GEMINI;
-    }
-
     public boolean isRevisarFonteVeridica() {
         return obter().isRevisarFonteVeridica();
     }
@@ -151,10 +130,6 @@ public class ConfiguracaoService {
 
     public String getMistralApiKey() {
         return obter().getMistralApiKey();
-    }
-
-    public String getIdeogramApiKey() {
-        return obter().getIdeogramApiKey();
     }
 
     public String getBlogApiUrl() {
@@ -203,28 +178,6 @@ public class ConfiguracaoService {
     private CriterioBusca parseCriterioSeguro(String nome) {
         try {
             return CriterioBusca.valueOf(nome.trim());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private EstiloIlustracao parseEstiloSeguro(String nome) {
-        if (nome == null) {
-            return null;
-        }
-        try {
-            return EstiloIlustracao.valueOf(nome.trim());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private ProvedorIlustracao parseProvedorIlustracaoSeguro(String nome) {
-        if (nome == null) {
-            return null;
-        }
-        try {
-            return ProvedorIlustracao.valueOf(nome.trim());
         } catch (Exception e) {
             return null;
         }
