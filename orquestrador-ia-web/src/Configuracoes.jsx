@@ -21,13 +21,6 @@ const COTAS_IA = [
   { chave: "cotaMistral", rotulo: "Mistral" },
 ];
 
-const BIBLIOTECAS_ICONES = [
-  { valor: "TABLER", rotulo: "Tabler Icons (traço fino, igual ao do blog)" },
-  { valor: "PHOSPHOR", rotulo: "Phosphor" },
-  { valor: "MATERIAL_SYMBOLS", rotulo: "Material Symbols" },
-  { valor: "MATERIAL_ICONS", rotulo: "Material Icons" },
-];
-
 function estadoInicial() {
   return {
     groqApiKey: "",
@@ -40,7 +33,6 @@ function estadoInicial() {
     atribuirFonte: false,
     blogApiUrl: "",
     blogApiToken: "",
-    bibliotecaIcones: "TABLER",
     cotaGroq: 50,
     cotaGemini: 50,
     cotaMistral: 50,
@@ -78,7 +70,6 @@ export default function Configuracoes() {
         atribuirFonte: dados.atribuirFonte,
         blogApiUrl: dados.blogApiUrl ?? "",
         blogApiToken: "",
-        bibliotecaIcones: dados.bibliotecaIcones ?? "TABLER",
         cotaGroq: dados.cotaGroq ?? 50,
         cotaGemini: dados.cotaGemini ?? 50,
         cotaMistral: dados.cotaMistral ?? 50,
@@ -277,27 +268,6 @@ export default function Configuracoes() {
             onChange={(e) => setForm((atual) => ({ ...atual, blogApiToken: e.target.value }))}
             autoComplete="off"
           />
-        </div>
-      </section>
-
-      <section className="config-secao">
-        <h2>Ilustração</h2>
-        <p className="config-descricao">
-          Biblioteca de ícones usada na capa dos posts. A IA escolhe o ícone de acordo com o tema de
-          cada notícia — aqui você só define o estilo visual da coleção pesquisada.
-        </p>
-        <div className="config-checkboxes">
-          {BIBLIOTECAS_ICONES.map(({ valor, rotulo }) => (
-            <label className="config-radio" key={valor}>
-              <input
-                type="radio"
-                name="bibliotecaIcones"
-                checked={form.bibliotecaIcones === valor}
-                onChange={() => setForm((atual) => ({ ...atual, bibliotecaIcones: valor }))}
-              />
-              {rotulo}
-            </label>
-          ))}
         </div>
       </section>
 

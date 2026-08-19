@@ -2,8 +2,6 @@ package com.huber.orquestrador.configuracao;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -43,9 +41,6 @@ public class Configuracao {
 
     private String blogApiToken;
 
-    @Enumerated(EnumType.STRING)
-    private BibliotecaIcones bibliotecaIcones;
-
     private Integer cotaGroq;
 
     private Integer cotaGemini;
@@ -77,7 +72,6 @@ public class Configuracao {
         this.revisarPadraoLinkedin = true;
         this.atribuirFonte = false;
         this.blogApiUrl = "https://leandrohuber.duckdns.org";
-        this.bibliotecaIcones = BibliotecaIcones.TABLER;
         this.cotaGroq = 50;
         this.cotaGemini = 50;
         this.cotaMistral = 50;
@@ -170,14 +164,6 @@ public class Configuracao {
 
     public void setBlogApiToken(String blogApiToken) {
         this.blogApiToken = blogApiToken;
-    }
-
-    public BibliotecaIcones getBibliotecaIcones() {
-        return bibliotecaIcones;
-    }
-
-    public void setBibliotecaIcones(BibliotecaIcones bibliotecaIcones) {
-        this.bibliotecaIcones = bibliotecaIcones;
     }
 
     public Integer getCotaGroq() {

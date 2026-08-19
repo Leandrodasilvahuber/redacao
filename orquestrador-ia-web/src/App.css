@@ -234,8 +234,7 @@
   accent-color: #0ea5e9;
 }
 
-.config-checkbox,
-.config-radio {
+.config-checkbox {
   display: flex;
   align-items: center;
   gap: 0.5rem;

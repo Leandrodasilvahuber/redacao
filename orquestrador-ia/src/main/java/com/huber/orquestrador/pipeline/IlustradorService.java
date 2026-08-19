@@ -1,6 +1,5 @@
 package com.huber.orquestrador.pipeline;
 
-import com.huber.orquestrador.configuracao.ConfiguracaoService;
 import com.huber.orquestrador.gemini.GeminiClient;
 import com.huber.orquestrador.gemini.LimiteGeminiAtingidoException;
 import com.huber.orquestrador.iconify.IconeSvgUtil;
@@ -78,6 +77,9 @@ public class IlustradorService {
     /** Fundo (var(--card-2)) da identidade visual do blog. */
     private static final String COR_FUNDO_BLOG = "#171725";
 
+    /** Biblioteca de ícones do Iconify usada na capa — traço fino, igual ao line-art fixo do blog. */
+    private static final String BIBLIOTECA_ICONES = "tabler";
+
     private static final String ICONE_FALLBACK_CPU =
             "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">"
                     + "<path fill=\"currentColor\" d=\"M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"
@@ -87,17 +89,15 @@ public class IlustradorService {
     private final GeminiClient geminiClient;
     private final MistralClient mistralClient;
     private final IconifyClient iconifyClient;
-    private final ConfiguracaoService configuracaoService;
     private final ObjectMapper objectMapper;
 
     public IlustradorService(NoticiaRepository noticiaRepository, GeminiClient geminiClient,
                               MistralClient mistralClient, IconifyClient iconifyClient,
-                              ConfiguracaoService configuracaoService, ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper) {
         this.noticiaRepository = noticiaRepository;
         this.geminiClient = geminiClient;
         this.mistralClient = mistralClient;
         this.iconifyClient = iconifyClient;
-        this.configuracaoService = configuracaoService;
         this.objectMapper = objectMapper;
     }
 
@@ -230,7 +230,7 @@ public class IlustradorService {
 
     private String buscarIconeComFallback(String termoIcone) {
         try {
-            return iconifyClient.buscarIconeSvg(termoIcone, configuracaoService.getBibliotecaIcones().getPrefixoIconify());
+            return iconifyClient.buscarIconeSvg(termoIcone, BIBLIOTECA_ICONES);
         } catch (Exception e) {
             log.warn("Falha ao buscar ícone \"{}\" no Iconify, usando ícone genérico: {}", termoIcone, e.getMessage());
             return ICONE_FALLBACK_CPU;

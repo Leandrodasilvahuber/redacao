@@ -36,7 +36,6 @@ public class ConfiguracaoService {
                 config.isAtribuirFonte(),
                 config.getBlogApiUrl(),
                 mascarar(config.getBlogApiToken()), temValor(config.getBlogApiToken()),
-                getBibliotecaIcones().name(),
                 getCotaGroq(), getCotaGemini(), getCotaMistral(),
                 mascarar(config.getLinkedinClientId()), temValor(config.getLinkedinClientId()),
                 mascarar(config.getLinkedinClientSecret()), temValor(config.getLinkedinClientSecret()),
@@ -77,8 +76,6 @@ public class ConfiguracaoService {
         if (temValor(request.blogApiToken())) {
             config.setBlogApiToken(request.blogApiToken().trim());
         }
-        BibliotecaIcones bibliotecaIcones = parseBibliotecaIconesSegura(request.bibliotecaIcones());
-        config.setBibliotecaIcones(bibliotecaIcones != null ? bibliotecaIcones : BibliotecaIcones.TABLER);
 
         config.setCotaGroq(cotaSegura(request.cotaGroq(), getCotaGroq()));
         config.setCotaGemini(cotaSegura(request.cotaGemini(), getCotaGemini()));
@@ -145,11 +142,6 @@ public class ConfiguracaoService {
         return obter().getBlogApiToken();
     }
 
-    public BibliotecaIcones getBibliotecaIcones() {
-        BibliotecaIcones biblioteca = obter().getBibliotecaIcones();
-        return biblioteca != null ? biblioteca : BibliotecaIcones.TABLER;
-    }
-
     /** Percentual (0-100) do limite gratuito de cada IA que o app tem permissão de usar por dia. */
     public int getCotaGroq() {
         Integer cota = obter().getCotaGroq();
@@ -199,17 +191,6 @@ public class ConfiguracaoService {
     private CriterioBusca parseCriterioSeguro(String nome) {
         try {
             return CriterioBusca.valueOf(nome.trim());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private BibliotecaIcones parseBibliotecaIconesSegura(String nome) {
-        if (nome == null) {
-            return null;
-        }
-        try {
-            return BibliotecaIcones.valueOf(nome.trim());
         } catch (Exception e) {
             return null;
         }
