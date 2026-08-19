@@ -6,6 +6,7 @@ import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
 import com.huber.orquestrador.noticia.Noticia;
 import com.huber.orquestrador.noticia.NoticiaRepository;
+import com.huber.orquestrador.noticia.TituloSimilaridadeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,7 +14,9 @@ import org.springframework.stereotype.Service;
 
 import java.net.URL;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class BuscadorService {
@@ -29,11 +32,20 @@ public class BuscadorService {
         this.feeds = feeds;
     }
 
+    /**
+     * Além de ignorar links já vistos, evita gravar duas vezes a mesma notícia quando ela é
+     * replicada com manchetes diferentes por fontes distintas (comparando as palavras do título).
+     */
     public int buscar() {
+        List<Set<String>> titulosExistentes = new ArrayList<>();
+        for (String titulo : noticiaRepository.findAllTitulos()) {
+            titulosExistentes.add(TituloSimilaridadeUtil.normalizar(titulo));
+        }
+
         int novas = 0;
         for (String feedUrl : feeds) {
             try {
-                novas += buscarFeed(feedUrl);
+                novas += buscarFeed(feedUrl, titulosExistentes);
             } catch (Exception e) {
                 log.warn("Falha ao ler feed {}: {}", feedUrl, e.getMessage());
             }
@@ -41,7 +53,7 @@ public class BuscadorService {
         return novas;
     }
 
-    private int buscarFeed(String feedUrl) throws Exception {
+    private int buscarFeed(String feedUrl, List<Set<String>> titulosExistentes) throws Exception {
         SyndFeedInput input = new SyndFeedInput();
         SyndFeed feed = input.build(new XmlReader(new URL(feedUrl)));
         int novas = 0;
@@ -50,6 +62,15 @@ public class BuscadorService {
             if (noticiaRepository.existsByLink(entry.getLink())) {
                 continue;
             }
+
+            Set<String> palavrasTitulo = TituloSimilaridadeUtil.normalizar(entry.getTitle());
+            boolean duplicada = titulosExistentes.stream()
+                    .anyMatch(palavras -> TituloSimilaridadeUtil.saoDuplicados(palavras, palavrasTitulo));
+            if (duplicada) {
+                log.info("Ignorando notícia repetida (mesmo assunto de outra fonte): {}", entry.getTitle());
+                continue;
+            }
+
             String resumo = entry.getDescription() != null ? entry.getDescription().getValue() : "";
             Instant dataPublicacao = entry.getPublishedDate() != null
                     ? entry.getPublishedDate().toInstant()
@@ -57,6 +78,7 @@ public class BuscadorService {
 
             Noticia noticia = new Noticia(entry.getTitle(), entry.getLink(), feed.getTitle(), resumo, dataPublicacao);
             noticiaRepository.save(noticia);
+            titulosExistentes.add(palavrasTitulo);
             novas++;
         }
         return novas;
