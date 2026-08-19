@@ -55,6 +55,19 @@ public class BlogClient {
                 .toBodilessEntity();
     }
 
+    /** Substitui só a capa de um post já publicado, sem mexer no resto do conteúdo. */
+    public void atualizarCapa(String id, String coverImageBase64) {
+        restClient().put()
+                .uri("/posts/{id}/cover", id)
+                .header("Authorization", "Bearer " + resolverApiToken())
+                .body(new AtualizarCapaRequest(coverImageBase64))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    private record AtualizarCapaRequest(@JsonProperty("cover_image_base64") String coverImageBase64) {
+    }
+
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record PostRequest(
             String role,

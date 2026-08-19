@@ -62,6 +62,19 @@ public class BlogPublicadorService {
         }
     }
 
+    /**
+     * Reenvia a capa de um post já publicado (usado pra atualizar posts antigos pro padrão visual
+     * atual). Ao contrário de {@link #publicar}, deixa a exceção subir: aqui é uma ação manual e
+     * pontual, então o chamador precisa saber na hora se falhou, em vez de só logar.
+     */
+    public void atualizarCapa(Noticia noticia, byte[] imagemPng) {
+        if (noticia.getBlogPostId() == null || noticia.getBlogPostId().isBlank()) {
+            throw new IllegalStateException("Notícia " + noticia.getId() + " não tem post no blog");
+        }
+        String coverImageBase64 = Base64.getEncoder().encodeToString(imagemPng);
+        blogClient.atualizarCapa(noticia.getBlogPostId(), coverImageBase64);
+    }
+
     public void excluir(Noticia noticia) {
         if (noticia.getBlogPostId() == null || noticia.getBlogPostId().isBlank()) {
             return;

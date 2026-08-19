@@ -131,6 +131,18 @@ public class IlustradorService {
     }
 
     /**
+     * Gera uma nova capa pra uma notícia já ilustrada (ou publicada), no padrão visual atual, e
+     * salva no lugar da anterior. Usado pra atualizar posts antigos sem repetir o resto do
+     * pipeline (texto, seleção, etc.).
+     */
+    public String regerarIlustracao(Noticia noticia) {
+        String ilustracao = gerarIlustracao(noticia, new boolean[]{false}, new boolean[]{false});
+        noticia.setSvgIlustracao(objectMapper.writeValueAsString(List.of(ilustracao)));
+        noticiaRepository.save(noticia);
+        return ilustracao;
+    }
+
+    /**
      * Prefere o Gemini para condensar o texto do post; quando a cota diária dele estourar, passa a
      * usar o Mistral pelo resto da execução. Só devolve o texto revisado sem condensar se as duas IAs
      * estiverem indisponíveis.
