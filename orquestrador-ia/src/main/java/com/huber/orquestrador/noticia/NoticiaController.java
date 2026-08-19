@@ -53,15 +53,7 @@ public class NoticiaController {
         Noticia noticia = noticiaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notícia não encontrada"));
 
-        byte[] imagemPng = null;
-        if (body != null && body.imagemPngBase64() != null && !body.imagemPngBase64().isBlank()) {
-            String base64 = body.imagemPngBase64();
-            int virgula = base64.indexOf(',');
-            if (virgula >= 0) {
-                base64 = base64.substring(virgula + 1);
-            }
-            imagemPng = Base64.getDecoder().decode(base64);
-        }
+        byte[] imagemPng = body != null ? decodificarPng(body.imagemPngBase64()) : null;
 
         linkedInPublicadorService.publicar(noticia, imagemPng);
         blogPublicadorService.publicar(noticia, imagemPng);
@@ -89,26 +81,50 @@ public class NoticiaController {
 
     /** Reenvia a capa (já rasterizada em PNG) pro post existente no blog. */
     @PutMapping("/{id}/capa-blog")
-    public Noticia atualizarCapaBlog(@PathVariable Long id, @RequestBody AtualizarCapaBlogRequest body) {
+    public Noticia atualizarCapaBlog(@PathVariable Long id, @RequestBody ImagemBase64Request body) {
         Noticia noticia = noticiaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notícia não encontrada"));
-        if (body == null || body.imagemPngBase64() == null || body.imagemPngBase64().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imagemPngBase64 é obrigatório");
-        }
-        String base64 = body.imagemPngBase64();
-        int virgula = base64.indexOf(',');
-        if (virgula >= 0) {
-            base64 = base64.substring(virgula + 1);
-        }
         try {
-            blogPublicadorService.atualizarCapa(noticia, Base64.getDecoder().decode(base64));
+            blogPublicadorService.atualizarCapa(noticia, exigirImagem(body));
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao atualizar a capa no blog: " + e.getMessage());
         }
         return noticia;
     }
 
-    public record AtualizarCapaBlogRequest(String imagemPngBase64) {
+    /**
+     * Exclui o post atual do LinkedIn e publica de novo com a capa nova (a API do LinkedIn não
+     * permite editar a imagem de um post existente).
+     */
+    @PutMapping("/{id}/capa-linkedin")
+    public Noticia atualizarCapaLinkedin(@PathVariable Long id, @RequestBody ImagemBase64Request body) {
+        Noticia noticia = noticiaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notícia não encontrada"));
+        try {
+            linkedInPublicadorService.republicarComNovaImagem(noticia, exigirImagem(body));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao republicar no LinkedIn: " + e.getMessage());
+        }
+        return noticiaRepository.save(noticia);
+    }
+
+    public record ImagemBase64Request(String imagemPngBase64) {
+    }
+
+    private static byte[] exigirImagem(ImagemBase64Request body) {
+        if (body == null || body.imagemPngBase64() == null || body.imagemPngBase64().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imagemPngBase64 é obrigatório");
+        }
+        return decodificarPng(body.imagemPngBase64());
+    }
+
+    private static byte[] decodificarPng(String base64) {
+        if (base64 == null || base64.isBlank()) {
+            return null;
+        }
+        int virgula = base64.indexOf(',');
+        String conteudo = virgula >= 0 ? base64.substring(virgula + 1) : base64;
+        return Base64.getDecoder().decode(conteudo);
     }
 
     @DeleteMapping("/{id}")

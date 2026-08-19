@@ -44,6 +44,34 @@ public class LinkedInPublicadorService {
         }
     }
 
+    /**
+     * Exclui o post atual (se houver) e publica de novo com a imagem nova. A API do LinkedIn não
+     * permite editar a imagem de um post já publicado, então pra trocar a capa é preciso excluir e
+     * reenviar — usado pra atualizar posts antigos pro padrão visual atual. Ao contrário de
+     * {@link #publicar}, deixa a exceção subir: aqui é uma ação manual e pontual, então o chamador
+     * precisa saber na hora se falhou, em vez de só logar.
+     */
+    public void republicarComNovaImagem(Noticia noticia, byte[] imagemPng) {
+        String accessToken = configuracaoService.getLinkedinAccessToken();
+        String personUrn = configuracaoService.getLinkedinPersonUrn();
+        Instant expiraEm = configuracaoService.getLinkedinTokenExpiraEm();
+
+        if (accessToken == null || accessToken.isBlank() || personUrn == null || personUrn.isBlank()) {
+            throw new IllegalStateException(
+                    "LinkedIn não está conectado. Acesse Configurações e clique em \"Conectar LinkedIn\".");
+        }
+        if (expiraEm != null && Instant.now().isAfter(expiraEm)) {
+            throw new IllegalStateException(
+                    "O acesso ao LinkedIn expirou. Acesse Configurações e reconecte o LinkedIn.");
+        }
+
+        if (noticia.getLinkedinPostUrn() != null && !noticia.getLinkedinPostUrn().isBlank()) {
+            linkedInClient.excluirPost(accessToken, noticia.getLinkedinPostUrn());
+        }
+        String postUrn = linkedInClient.publicarPost(accessToken, personUrn, noticia.getTextoFinal(), imagemPng);
+        noticia.marcarPublicadaNoLinkedin(postUrn);
+    }
+
     public void excluir(Noticia noticia) {
         if (noticia.getLinkedinPostUrn() == null || noticia.getLinkedinPostUrn().isBlank()) {
             return;
