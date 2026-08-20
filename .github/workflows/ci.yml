@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build e testes
+      - name: Build, testes e análise estática (Checkstyle + SpotBugs)
         run: ./mvnw -B verify
 
   frontend:

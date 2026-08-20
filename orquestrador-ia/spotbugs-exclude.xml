@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Padrão normal de injeção de dependência via construtor (Spring): guardar a dependência
+         recebida como campo final não é um vazamento de estado interno mutável relevante aqui. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+    <!-- IlustradorService.renderizar gera markup SVG/XML com .formatted(), não texto pra console;
+         "\n" literal é o correto, "%n" dependeria de plataforma e quebraria o XML no Windows. -->
+    <Match>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>
+    </Match>
+</FindBugsFilter>
