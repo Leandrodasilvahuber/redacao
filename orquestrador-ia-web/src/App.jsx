@@ -5,7 +5,7 @@ import DetalheModal from "./DetalheModal";
 import IndicadorIA from "./IndicadorIA";
 import UsoGroq from "./UsoGroq";
 import UsoMistral from "./UsoMistral";
-import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, listarNoticias, marcarPublicada, rodarEtapa } from "./api";
+import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, listarNoticias, marcarPublicada, regerarIcone, rodarEtapa } from "./api";
 import { CONTADOR_POR_ETAPA, PROXIMA_ETAPA } from "./estados";
 import { listaDeIlustracoes, rasterizarSvgParaPng } from "./svgUtils";
 import "./App.css";
@@ -25,6 +25,7 @@ export default function App() {
   const [etapaRodando, setEtapaRodando] = useState(null);
   const [processando, setProcessando] = useState(null);
   const [aprovando, setAprovando] = useState(false);
+  const [regerandoIcone, setRegerandoIcone] = useState(false);
   const [erro, setErro] = useState(null);
   const [aviso, setAviso] = useState(null);
 
@@ -166,6 +167,20 @@ export default function App() {
     }
   }
 
+  async function regerarIconeDaNoticia(id) {
+    setRegerandoIcone(true);
+    setErro(null);
+    try {
+      const { svgIlustracao } = await regerarIcone(id);
+      setNoticias((atuais) => atuais.map((n) => (n.id === id ? { ...n, svgIlustracao: JSON.stringify([svgIlustracao]) } : n)));
+      setSelecionada((atual) => (atual?.id === id ? { ...atual, svgIlustracao: JSON.stringify([svgIlustracao]) } : atual));
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setRegerandoIcone(false);
+    }
+  }
+
   return (
     <div className="app">
       <header className="topo">
@@ -226,6 +241,8 @@ export default function App() {
             aoFechar={() => setSelecionada(null)}
             aoAprovar={aprovar}
             aprovando={aprovando}
+            aoRegerarIcone={regerarIconeDaNoticia}
+            regerandoIcone={regerandoIcone}
           />
         </>
       ) : (

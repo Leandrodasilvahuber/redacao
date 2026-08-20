@@ -10,7 +10,7 @@ function removerImagens(html) {
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
 }
 
-export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando }) {
+export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando, aoRegerarIcone, regerandoIcone }) {
   if (!noticia) return null;
 
   return (
@@ -27,6 +27,13 @@ export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando }
           <div className="modal-secao">
             <h3>Simulação do post no LinkedIn</h3>
             <LinkedInPreview noticia={noticia} />
+            <button
+              className="botao-regerar-icone"
+              onClick={() => aoRegerarIcone(noticia.id)}
+              disabled={regerandoIcone}
+            >
+              {regerandoIcone ? "Regerando ícone..." : "Regerar ícone"}
+            </button>
           </div>
         )}
 

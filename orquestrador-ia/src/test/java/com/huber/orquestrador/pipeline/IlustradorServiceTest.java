@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -131,6 +132,80 @@ class IlustradorServiceTest {
         String svg = service.regerarIlustracao(noticia);
 
         assertThat(svg).doesNotContain("#ff0000").contains("#00F0FF");
+    }
+
+    @Test
+    void regerarIconeMantemACorDestaqueAtualETrocaOTermoDoIcone() {
+        Noticia noticia = noticia();
+        noticia.setSvgIlustracao(
+                "[\"<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" viewBox=\\\"0 0 1200 627\\\">"
+                        + "<circle cx=\\\"862.4\\\" cy=\\\"170.6\\\" r=\\\"9\\\" fill=\\\"#FF2E9A\\\"/>"
+                        + "<circle cx=\\\"336.8\\\" cy=\\\"460.0\\\" r=\\\"6\\\" fill=\\\"#9D4EFF\\\"/></svg>\"]");
+        when(geminiClient.chat(anyString(), anyString(), anyMap()))
+                .thenReturn("{\"termoIcone\":\"robot\"}");
+        when(iconifyClient.buscarIconeSvg("robot", "tabler")).thenReturn(ICONE_TABLER);
+
+        String svg = service.regerarIcone(noticia);
+
+        assertThat(svg).contains("#FF2E9A").doesNotContain("#9D4EFF");
+        verify(iconifyClient).buscarIconeSvg("robot", "tabler");
+        verify(noticiaRepository).save(noticia);
+    }
+
+    @Test
+    void regerarIconeUsaCorPadraoQuandoNaoHaCapaAnterior() {
+        Noticia noticia = noticia();
+        when(geminiClient.chat(anyString(), anyString(), anyMap()))
+                .thenReturn("{\"termoIcone\":\"robot\"}");
+        when(iconifyClient.buscarIconeSvg("robot", "tabler")).thenReturn(ICONE_TABLER);
+
+        String svg = service.regerarIcone(noticia);
+
+        assertThat(svg).containsAnyOf("#00F0FF", "#8CF7FF", "#FF2E9A", "#9D4EFF");
+    }
+
+    @Test
+    void regerarIconeInformaOTermoAnteriorParaAIaEvitarRepetir() {
+        Noticia noticia = noticia();
+        noticia.setUltimoTermoIcone("robot");
+        when(geminiClient.chat(anyString(), anyString(), anyMap()))
+                .thenReturn("{\"termoIcone\":\"cloud\"}");
+        when(iconifyClient.buscarIconeSvg("cloud", "tabler")).thenReturn(ICONE_TABLER);
+
+        service.regerarIcone(noticia);
+
+        org.mockito.ArgumentCaptor<String> pedidoCapturado = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(geminiClient).chat(anyString(), pedidoCapturado.capture(), anyMap());
+        assertThat(pedidoCapturado.getValue()).contains("Termo já usado na capa atual (não repita): robot");
+        assertThat(noticia.getUltimoTermoIcone()).isEqualTo("cloud");
+    }
+
+    @Test
+    void regerarIconeForcaUmTermoDiferenteQuandoAIaRepeteOTermoAnterior() {
+        Noticia noticia = noticia();
+        noticia.setUltimoTermoIcone("robot");
+        when(geminiClient.chat(anyString(), anyString(), anyMap()))
+                .thenReturn("{\"termoIcone\":\"robot\"}");
+        when(iconifyClient.buscarIconeSvg(anyString(), anyString())).thenReturn(ICONE_TABLER);
+
+        service.regerarIcone(noticia);
+
+        verify(iconifyClient, never()).buscarIconeSvg("robot", "tabler");
+        assertThat(noticia.getUltimoTermoIcone()).isNotEqualToIgnoringCase("robot");
+    }
+
+    @Test
+    void regerarIconeCaiNoTermoPadraoQuandoGeminiEMistralFalham() {
+        Noticia noticia = noticia();
+        when(geminiClient.chat(anyString(), anyString(), anyMap()))
+                .thenThrow(new LimiteGeminiAtingidoException("cota diária atingida"));
+        when(mistralClient.chat(anyString(), anyString(), org.mockito.ArgumentMatchers.eq(true)))
+                .thenThrow(new LimiteMistralAtingidoException("orçamento estourado"));
+        when(iconifyClient.buscarIconeSvg(anyString(), anyString())).thenReturn(ICONE_TABLER);
+
+        service.regerarIcone(noticia);
+
+        verify(iconifyClient).buscarIconeSvg("chip", "tabler");
     }
 
     @Test

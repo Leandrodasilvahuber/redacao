@@ -17,6 +17,8 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Monta a capa dos posts reproduzindo a identidade visual fixa do blog (fundo escuro quadriculado +
@@ -55,6 +57,34 @@ public class IlustradorService {
               uso geral/tech), "#8CF7FF" (ciano claro, dados e redes), "#FF2E9A" (magenta, segurança e
               alertas), "#9D4EFF" (roxo, IA e produto). Varie entre os posts.
             """;
+
+    private static final String PROMPT_ICONE = """
+            Você escolhe só o ícone da capa de um post sobre a notícia de tecnologia indicada (a cor de
+            destaque já está definida e não muda). Responda com:
+            - "termoIcone": UMA palavra ou expressão curta EM INGLÊS, simples e concreta, para buscar um
+              ícone relacionado ao tema no Iconify (ex.: "robot", "cloud", "database", "lock", "chip",
+              "rocket"). Evite termos abstratos. Se o pedido indicar um termo já usado antes, escolha
+              OBRIGATORIAMENTE um termo diferente dele, mesmo que ainda ligado ao tema.
+            """;
+
+    private static final Map<String, Object> SCHEMA_ICONE = Map.of(
+            "type", "OBJECT",
+            "properties", Map.of("termoIcone", Map.of("type", "STRING")),
+            "required", List.of("termoIcone")
+    );
+
+    private static final String PROMPT_ICONE_MISTRAL = PROMPT_ICONE + """
+
+            Responda em JSON válido e apenas o JSON (sem texto fora dele, sem markdown), com exatamente
+            esta chave: "termoIcone" (string).
+            """;
+
+    /**
+     * Termos de reserva pra garantir um ícone diferente do anterior mesmo se as IAs insistirem em
+     * repetir o termo já usado (a busca no Iconify é determinística por termo).
+     */
+    private static final List<String> TERMOS_ICONE_RESERVA =
+            List.of("chip", "circuit", "spark", "beacon", "signal", "orbit", "pulse", "network");
 
     private static final List<String> CORES_BLOG = List.of("#00F0FF", "#8CF7FF", "#FF2E9A", "#9D4EFF");
 
@@ -143,6 +173,99 @@ public class IlustradorService {
     }
 
     /**
+     * Gera de novo só o ícone da capa, mantendo a cor de destaque atual (lida da capa já persistida),
+     * e salva no lugar da anterior.
+     */
+    public String regerarIcone(Noticia noticia) {
+        String corAtual = corAtualDaIlustracao(noticia);
+        String termoAnterior = noticia.getUltimoTermoIcone();
+        String termoIcone = gerarTermoIcone(noticia, termoAnterior, new boolean[]{false}, new boolean[]{false});
+        if (termoAnterior != null && termoIcone.equalsIgnoreCase(termoAnterior)) {
+            log.warn("IA repetiu o termo de ícone \"{}\" da notícia {}, forçando um termo diferente",
+                    termoAnterior, noticia.getId());
+            termoIcone = termoDiferente(termoAnterior);
+        }
+        String iconeSvg = buscarIconeComFallback(termoIcone);
+        String ilustracao = renderizar(new Acabamento(termoIcone, corAtual), iconeSvg);
+        noticia.setSvgIlustracao(objectMapper.writeValueAsString(List.of(ilustracao)));
+        noticia.setUltimoTermoIcone(termoIcone);
+        noticiaRepository.save(noticia);
+        return ilustracao;
+    }
+
+    /** Termo de reserva diferente do informado, pra garantir variação mesmo se a IA insistir em repetir. */
+    private static String termoDiferente(String termoEvitar) {
+        int indice = TERMOS_ICONE_RESERVA.indexOf(termoEvitar.toLowerCase());
+        int proximo = (Math.max(indice, 0) + 1) % TERMOS_ICONE_RESERVA.size();
+        return TERMOS_ICONE_RESERVA.get(proximo);
+    }
+
+    /** Lê a cor de destaque da capa já persistida, ou sorteia uma cor padrão se não houver capa ainda. */
+    private String corAtualDaIlustracao(Noticia noticia) {
+        String svgAtual = noticia.getSvgIlustracao();
+        if (svgAtual != null && !svgAtual.isBlank()) {
+            try {
+                String[] ilustracoes = objectMapper.readValue(svgAtual, String[].class);
+                if (ilustracoes.length > 0) {
+                    Matcher m = Pattern.compile("r=\"9\" fill=\"(#[0-9A-Fa-f]{6})\"").matcher(ilustracoes[0]);
+                    if (m.find()) {
+                        String cor = m.group(1).toUpperCase();
+                        if (CORES_BLOG.contains(cor)) {
+                            return cor;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Falha ao ler a cor de destaque atual da notícia {}, usando cor padrão: {}",
+                        noticia.getId(), e.getMessage());
+            }
+        }
+        return Acabamento.padrao(noticia).corDestaque();
+    }
+
+    /**
+     * Prefere o Gemini para escolher o novo termo do ícone; quando a cota diária dele estourar, passa
+     * a usar o Mistral pelo resto da execução. Só cai no termo padrão se as duas IAs estiverem
+     * indisponíveis.
+     */
+    private String gerarTermoIcone(Noticia noticia, String termoAnterior, boolean[] geminiEsgotado,
+                                    boolean[] mistralEsgotado) {
+        String pedido = "Título: " + noticia.getTitulo()
+                + (termoAnterior != null && !termoAnterior.isBlank()
+                        ? "\nTermo já usado na capa atual (não repita): " + termoAnterior
+                        : "");
+
+        if (!geminiEsgotado[0]) {
+            try {
+                String json = geminiClient.chat(PROMPT_ICONE, pedido, SCHEMA_ICONE);
+                return Acabamento.doJson(objectMapper, json).termoIcone();
+            } catch (LimiteGeminiAtingidoException e) {
+                log.warn("Limite do Gemini atingido, passando a usar o Mistral para o novo ícone da capa: {}",
+                        e.getMessage());
+                geminiEsgotado[0] = true;
+            } catch (Exception e) {
+                log.warn("Falha ao decidir o novo ícone da capa para a notícia {} via Gemini, usando padrão: {}",
+                        noticia.getId(), e.getMessage());
+                return Acabamento.padrao(noticia).termoIcone();
+            }
+        }
+
+        if (!mistralEsgotado[0]) {
+            try {
+                String json = mistralClient.chat(PROMPT_ICONE_MISTRAL, pedido, true);
+                return Acabamento.doJson(objectMapper, json).termoIcone();
+            } catch (LimiteMistralAtingidoException e) {
+                log.warn("Limite do Mistral atingido, usando termo de ícone padrão: {}", e.getMessage());
+                mistralEsgotado[0] = true;
+            } catch (Exception e) {
+                log.warn("Falha ao decidir o novo ícone da capa para a notícia {} via Mistral, usando padrão: {}",
+                        noticia.getId(), e.getMessage());
+            }
+        }
+        return Acabamento.padrao(noticia).termoIcone();
+    }
+
+    /**
      * Prefere o Gemini para condensar o texto do post; quando a cota diária dele estourar, passa a
      * usar o Mistral pelo resto da execução. Só devolve o texto revisado sem condensar se as duas IAs
      * estiverem indisponíveis.
@@ -187,6 +310,7 @@ public class IlustradorService {
     private String gerarIlustracao(Noticia noticia, boolean[] geminiEsgotado, boolean[] mistralEsgotado) {
         Acabamento acabamento = gerarAcabamento(noticia, geminiEsgotado, mistralEsgotado);
         String iconeSvg = buscarIconeComFallback(acabamento.termoIcone());
+        noticia.setUltimoTermoIcone(acabamento.termoIcone());
         return renderizar(acabamento, iconeSvg);
     }
 

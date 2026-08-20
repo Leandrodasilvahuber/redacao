@@ -50,6 +50,9 @@ public class Noticia {
     @Lob
     private String svgIlustracao;
 
+    /** Termo de busca do ícone usado na capa atual, pra evitar repetir o mesmo ao regerar só o ícone. */
+    private String ultimoTermoIcone;
+
     @Lob
     private String textoFinal;
 
@@ -154,6 +157,14 @@ public class Noticia {
     public void setSvgIlustracao(String svgIlustracao) {
         this.svgIlustracao = svgIlustracao;
         this.atualizadoEm = Instant.now();
+    }
+
+    public String getUltimoTermoIcone() {
+        return ultimoTermoIcone;
+    }
+
+    public void setUltimoTermoIcone(String ultimoTermoIcone) {
+        this.ultimoTermoIcone = ultimoTermoIcone;
     }
 
     public String getTextoFinal() {

@@ -79,6 +79,16 @@ public class NoticiaController {
     public record RegerarCapaResponse(String svgIlustracao) {
     }
 
+    /**
+     * Gera de novo só o ícone da capa (mantendo a cor de destaque atual), no lugar da capa inteira.
+     */
+    @PostMapping("/{id}/regerar-icone")
+    public RegerarCapaResponse regerarIcone(@PathVariable Long id) {
+        Noticia noticia = noticiaRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notícia não encontrada"));
+        return new RegerarCapaResponse(ilustradorService.regerarIcone(noticia));
+    }
+
     /** Reenvia a capa (já rasterizada em PNG) pro post existente no blog. */
     @PutMapping("/{id}/capa-blog")
     public Noticia atualizarCapaBlog(@PathVariable Long id, @RequestBody ImagemBase64Request body) {

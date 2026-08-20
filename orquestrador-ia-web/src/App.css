@@ -822,6 +822,22 @@
   cursor: not-allowed;
 }
 
+.botao-regerar-icone {
+  margin-top: 0.75rem;
+  background: transparent;
+  border: 1px solid #8CF7FF;
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  color: #8CF7FF;
+  cursor: pointer;
+}
+
+.botao-regerar-icone:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .modal-publicada {
   margin-top: 1.5rem;
   font-weight: 600;

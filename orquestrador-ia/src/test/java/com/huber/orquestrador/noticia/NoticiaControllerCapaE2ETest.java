@@ -106,6 +106,46 @@ class NoticiaControllerCapaE2ETest {
     }
 
     @Test
+    void regerarIconeMantemACorDeDestaqueAtualETrocaOIcone() throws Exception {
+        Noticia noticia = salvarNoticia("https://exemplo.com/regerar-icone");
+        noticia.setSvgIlustracao(
+                "[\"<svg xmlns=\\\"http://www.w3.org/2000/svg\\\" viewBox=\\\"0 0 1200 627\\\">"
+                        + "<circle cx=\\\"862.4\\\" cy=\\\"170.6\\\" r=\\\"9\\\" fill=\\\"#FF2E9A\\\"/>"
+                        + "<circle cx=\\\"336.8\\\" cy=\\\"460.0\\\" r=\\\"6\\\" fill=\\\"#9D4EFF\\\"/></svg>\"]");
+        noticiaRepository.save(noticia);
+
+        mockMvc.perform(post("/noticias/{id}/regerar-icone", noticia.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.svgIlustracao").value(org.hamcrest.Matchers.containsString("#FF2E9A")));
+
+        Noticia recarregada = noticiaRepository.findById(noticia.getId()).orElseThrow();
+        assertThat(recarregada.getSvgIlustracao()).contains("#FF2E9A").contains("grade-blog");
+    }
+
+    @Test
+    void regerarIconeDevolve404ProNoticiaInexistente() throws Exception {
+        mockMvc.perform(post("/noticias/{id}/regerar-icone", 999_999))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void regerarIconeDuasVezesSeguidasNaoRepeteOIconeMesmoQuandoAIaInsisteNoMesmoTermo() throws Exception {
+        // o mock do Gemini sempre devolve o mesmo termoIcone ("robot"), simulando a IA insistindo
+        Noticia noticia = salvarNoticia("https://exemplo.com/regerar-icone-duas-vezes");
+
+        mockMvc.perform(post("/noticias/{id}/regerar-icone", noticia.getId()))
+                .andExpect(status().isOk());
+        Noticia apos1a = noticiaRepository.findById(noticia.getId()).orElseThrow();
+        assertThat(apos1a.getUltimoTermoIcone()).isEqualToIgnoringCase("robot");
+
+        mockMvc.perform(post("/noticias/{id}/regerar-icone", noticia.getId()))
+                .andExpect(status().isOk());
+        Noticia apos2a = noticiaRepository.findById(noticia.getId()).orElseThrow();
+
+        assertThat(apos2a.getUltimoTermoIcone()).isNotEqualToIgnoringCase("robot");
+    }
+
+    @Test
     void capaBlogDevolve400QuandoFaltaAImagem() throws Exception {
         Noticia noticia = salvarNoticia("https://exemplo.com/capa-blog-sem-imagem");
 
