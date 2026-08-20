@@ -1,3 +1,4 @@
+import { useState } from "react";
 import LinkedInPreview from "./LinkedInPreview";
 
 const ESTADOS_COM_PREVIEW = ["ILUSTRADA", "PRONTA_PARA_PUBLICAR", "PUBLICADA"];
@@ -11,7 +12,16 @@ function removerImagens(html) {
 }
 
 export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando, aoRegerarIcone, regerandoIcone }) {
+  const [mostrarDescricaoIcone, setMostrarDescricaoIcone] = useState(false);
+  const [descricaoIcone, setDescricaoIcone] = useState("");
+
   if (!noticia) return null;
+
+  function confirmarRegerarIcone() {
+    aoRegerarIcone(noticia.id, descricaoIcone);
+    setMostrarDescricaoIcone(false);
+    setDescricaoIcone("");
+  }
 
   return (
     <div className="modal-fundo" onClick={aoFechar}>
@@ -27,13 +37,43 @@ export default function DetalheModal({ noticia, aoFechar, aoAprovar, aprovando, 
           <div className="modal-secao">
             <h3>Simulação do post no LinkedIn</h3>
             <LinkedInPreview noticia={noticia} />
-            <button
-              className="botao-regerar-icone"
-              onClick={() => aoRegerarIcone(noticia.id)}
-              disabled={regerandoIcone}
-            >
-              {regerandoIcone ? "Regerando ícone..." : "Regerar ícone"}
-            </button>
+            {mostrarDescricaoIcone ? (
+              <div className="regerar-icone-descricao">
+                <input
+                  type="text"
+                  className="regerar-icone-input"
+                  placeholder="Descreva o ícone desejado (opcional)"
+                  value={descricaoIcone}
+                  onChange={(e) => setDescricaoIcone(e.target.value)}
+                  disabled={regerandoIcone}
+                  autoFocus
+                />
+                <div className="regerar-icone-acoes">
+                  <button
+                    className="botao-regerar-icone"
+                    onClick={confirmarRegerarIcone}
+                    disabled={regerandoIcone}
+                  >
+                    {regerandoIcone ? "Regerando ícone..." : "Confirmar"}
+                  </button>
+                  <button
+                    className="botao-cancelar-icone"
+                    onClick={() => setMostrarDescricaoIcone(false)}
+                    disabled={regerandoIcone}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="botao-regerar-icone"
+                onClick={() => setMostrarDescricaoIcone(true)}
+                disabled={regerandoIcone}
+              >
+                {regerandoIcone ? "Regerando ícone..." : "Regerar ícone"}
+              </button>
+            )}
           </div>
         )}
 

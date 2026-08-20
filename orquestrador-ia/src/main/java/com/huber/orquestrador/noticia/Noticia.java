@@ -50,8 +50,9 @@ public class Noticia {
     @Lob
     private String svgIlustracao;
 
-    /** Termo de busca do ícone usado na capa atual, pra evitar repetir o mesmo ao regerar só o ícone. */
-    private String ultimoTermoIcone;
+    /** Histórico dos últimos termos de ícone usados na capa (JSON de List&lt;String&gt;), pra evitar repetir ao regerar. */
+    @Lob
+    private String termosIconeUsados;
 
     @Lob
     private String textoFinal;
@@ -159,12 +160,12 @@ public class Noticia {
         this.atualizadoEm = Instant.now();
     }
 
-    public String getUltimoTermoIcone() {
-        return ultimoTermoIcone;
+    public String getTermosIconeUsados() {
+        return termosIconeUsados;
     }
 
-    public void setUltimoTermoIcone(String ultimoTermoIcone) {
-        this.ultimoTermoIcone = ultimoTermoIcone;
+    public void setTermosIconeUsados(String termosIconeUsados) {
+        this.termosIconeUsados = termosIconeUsados;
     }
 
     public String getTextoFinal() {

@@ -87,6 +87,13 @@ class NoticiaControllerCapaE2ETest {
         return noticiaRepository.save(noticia);
     }
 
+    /** Último termo do histórico JSON (ex.: {@code ["robot","chip"]} -> {@code "chip"}). */
+    private static String ultimoTermoDoHistorico(Noticia noticia) {
+        String semColchetes = noticia.getTermosIconeUsados().replaceAll("[\\[\\]\"]", "");
+        String[] partes = semColchetes.split(",");
+        return partes[partes.length - 1].trim();
+    }
+
     @Test
     void regerarCapaGeraUmSvgNoPadraoDoBlogEPersisteNaNoticia() throws Exception {
         Noticia noticia = salvarNoticia("https://exemplo.com/regerar-capa");
@@ -129,20 +136,41 @@ class NoticiaControllerCapaE2ETest {
     }
 
     @Test
-    void regerarIconeDuasVezesSeguidasNaoRepeteOIconeMesmoQuandoAIaInsisteNoMesmoTermo() throws Exception {
+    void regerarIconeTresVezesSeguidasNaoRepeteNenhumTermoDoHistoricoQuandoAIaInsisteEmTermoJaUsado() throws Exception {
         // o mock do Gemini sempre devolve o mesmo termoIcone ("robot"), simulando a IA insistindo
-        Noticia noticia = salvarNoticia("https://exemplo.com/regerar-icone-duas-vezes");
+        Noticia noticia = salvarNoticia("https://exemplo.com/regerar-icone-tres-vezes");
 
         mockMvc.perform(post("/noticias/{id}/regerar-icone", noticia.getId()))
                 .andExpect(status().isOk());
         Noticia apos1a = noticiaRepository.findById(noticia.getId()).orElseThrow();
-        assertThat(apos1a.getUltimoTermoIcone()).isEqualToIgnoringCase("robot");
+        String termo1 = ultimoTermoDoHistorico(apos1a);
+        assertThat(termo1).isEqualToIgnoringCase("robot");
 
         mockMvc.perform(post("/noticias/{id}/regerar-icone", noticia.getId()))
                 .andExpect(status().isOk());
         Noticia apos2a = noticiaRepository.findById(noticia.getId()).orElseThrow();
+        String termo2 = ultimoTermoDoHistorico(apos2a);
+        assertThat(termo2).isNotEqualToIgnoringCase(termo1);
 
-        assertThat(apos2a.getUltimoTermoIcone()).isNotEqualToIgnoringCase("robot");
+        mockMvc.perform(post("/noticias/{id}/regerar-icone", noticia.getId()))
+                .andExpect(status().isOk());
+        Noticia apos3a = noticiaRepository.findById(noticia.getId()).orElseThrow();
+        String termo3 = ultimoTermoDoHistorico(apos3a);
+        assertThat(termo3).isNotEqualToIgnoringCase(termo1).isNotEqualToIgnoringCase(termo2);
+    }
+
+    @Test
+    void regerarIconeEnviaDescricaoDoUsuarioParaAIa() throws Exception {
+        Noticia noticia = salvarNoticia("https://exemplo.com/regerar-icone-descricao");
+
+        mockMvc.perform(post("/noticias/{id}/regerar-icone", noticia.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"descricao\":\"algo específico\"}"))
+                .andExpect(status().isOk());
+
+        org.mockito.ArgumentCaptor<String> pedidoCapturado = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(geminiClient).chat(anyString(), pedidoCapturado.capture(), anyMap());
+        assertThat(pedidoCapturado.getValue()).contains("algo específico");
     }
 
     @Test

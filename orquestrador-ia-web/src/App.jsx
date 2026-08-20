@@ -167,11 +167,11 @@ export default function App() {
     }
   }
 
-  async function regerarIconeDaNoticia(id) {
+  async function regerarIconeDaNoticia(id, descricao) {
     setRegerandoIcone(true);
     setErro(null);
     try {
-      const { svgIlustracao } = await regerarIcone(id);
+      const { svgIlustracao } = await regerarIcone(id, descricao);
       setNoticias((atuais) => atuais.map((n) => (n.id === id ? { ...n, svgIlustracao: JSON.stringify([svgIlustracao]) } : n)));
       setSelecionada((atual) => (atual?.id === id ? { ...atual, svgIlustracao: JSON.stringify([svgIlustracao]) } : atual));
     } catch (e) {

@@ -39,8 +39,16 @@ export function marcarPublicada(id, imagemPngBase64) {
   });
 }
 
-export function regerarIcone(id) {
-  return requisitar(`/noticias/${id}/regerar-icone`, { method: "POST" }, 90_000);
+export function regerarIcone(id, descricao) {
+  return requisitar(
+    `/noticias/${id}/regerar-icone`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ descricao: descricao || "" }),
+    },
+    90_000
+  );
 }
 
 export function excluirNoticia(id) {

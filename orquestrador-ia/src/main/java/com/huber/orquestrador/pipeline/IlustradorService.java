@@ -63,8 +63,10 @@ public class IlustradorService {
             destaque já está definida e não muda). Responda com:
             - "termoIcone": UMA palavra ou expressão curta EM INGLÊS, simples e concreta, para buscar um
               ícone relacionado ao tema no Iconify (ex.: "robot", "cloud", "database", "lock", "chip",
-              "rocket"). Evite termos abstratos. Se o pedido indicar um termo já usado antes, escolha
-              OBRIGATORIAMENTE um termo diferente dele, mesmo que ainda ligado ao tema.
+              "rocket"). Evite termos abstratos. Se o pedido indicar termos já usados antes, escolha
+              OBRIGATORIAMENTE um termo diferente de todos eles, mesmo que ainda ligado ao tema. Se o
+              pedido incluir uma descrição adicional do usuário, priorize um termo que reflita essa
+              descrição, mantendo a coerência com o título.
             """;
 
     private static final Map<String, Object> SCHEMA_ICONE = Map.of(
@@ -85,6 +87,9 @@ public class IlustradorService {
      */
     private static final List<String> TERMOS_ICONE_RESERVA =
             List.of("chip", "circuit", "spark", "beacon", "signal", "orbit", "pulse", "network");
+
+    /** Quantidade de termos de ícone recentes guardados por notícia, pra evitar repetir ao regerar. */
+    private static final int MAX_HISTORICO_TERMOS_ICONE = 5;
 
     private static final List<String> CORES_BLOG = List.of("#00F0FF", "#8CF7FF", "#FF2E9A", "#9D4EFF");
 
@@ -174,30 +179,56 @@ public class IlustradorService {
 
     /**
      * Gera de novo só o ícone da capa, mantendo a cor de destaque atual (lida da capa já persistida),
-     * e salva no lugar da anterior.
+     * e salva no lugar da anterior. {@code descricaoUsuario} é opcional e, quando informada, guia a
+     * IA na escolha do termo do ícone.
      */
-    public String regerarIcone(Noticia noticia) {
+    public String regerarIcone(Noticia noticia, String descricaoUsuario) {
         String corAtual = corAtualDaIlustracao(noticia);
-        String termoAnterior = noticia.getUltimoTermoIcone();
-        String termoIcone = gerarTermoIcone(noticia, termoAnterior, new boolean[]{false}, new boolean[]{false});
-        if (termoAnterior != null && termoIcone.equalsIgnoreCase(termoAnterior)) {
-            log.warn("IA repetiu o termo de ícone \"{}\" da notícia {}, forçando um termo diferente",
-                    termoAnterior, noticia.getId());
-            termoIcone = termoDiferente(termoAnterior);
+        List<String> termosUsados = lerHistoricoTermos(noticia.getTermosIconeUsados());
+        String termoIcone = gerarTermoIcone(noticia, termosUsados, descricaoUsuario,
+                new boolean[]{false}, new boolean[]{false});
+        String termoEscolhido = termoIcone;
+        if (termosUsados.stream().anyMatch(t -> t.equalsIgnoreCase(termoEscolhido))) {
+            log.warn("IA repetiu um termo de ícone já usado recentemente ({}) na notícia {}, forçando um termo diferente",
+                    termosUsados, noticia.getId());
+            termoIcone = termoDiferente(termosUsados);
         }
         String iconeSvg = buscarIconeComFallback(termoIcone);
         String ilustracao = renderizar(new Acabamento(termoIcone, corAtual), iconeSvg);
         noticia.setSvgIlustracao(objectMapper.writeValueAsString(List.of(ilustracao)));
-        noticia.setUltimoTermoIcone(termoIcone);
+        noticia.setTermosIconeUsados(objectMapper.writeValueAsString(comHistoricoAtualizado(termosUsados, termoIcone)));
         noticiaRepository.save(noticia);
         return ilustracao;
     }
 
-    /** Termo de reserva diferente do informado, pra garantir variação mesmo se a IA insistir em repetir. */
-    private static String termoDiferente(String termoEvitar) {
-        int indice = TERMOS_ICONE_RESERVA.indexOf(termoEvitar.toLowerCase());
-        int proximo = (Math.max(indice, 0) + 1) % TERMOS_ICONE_RESERVA.size();
-        return TERMOS_ICONE_RESERVA.get(proximo);
+    /** Lê o histórico de termos de ícone já usados, ou lista vazia se não houver (ainda) histórico salvo. */
+    private List<String> lerHistoricoTermos(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return List.of(objectMapper.readValue(json, String[].class));
+        } catch (Exception e) {
+            log.warn("Falha ao ler o histórico de termos de ícone, tratando como vazio: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** Acrescenta o novo termo ao histórico e mantém só os últimos {@link #MAX_HISTORICO_TERMOS_ICONE}. */
+    private static List<String> comHistoricoAtualizado(List<String> atual, String novoTermo) {
+        List<String> atualizado = new java.util.ArrayList<>(atual);
+        atualizado.removeIf(t -> t.equalsIgnoreCase(novoTermo));
+        atualizado.add(novoTermo);
+        int inicio = Math.max(0, atualizado.size() - MAX_HISTORICO_TERMOS_ICONE);
+        return atualizado.subList(inicio, atualizado.size());
+    }
+
+    /** Termo de reserva que evita todos os termos informados, pra garantir variação mesmo se a IA insistir em repetir. */
+    private static String termoDiferente(List<String> termosEvitar) {
+        return TERMOS_ICONE_RESERVA.stream()
+                .filter(termo -> termosEvitar.stream().noneMatch(t -> t.equalsIgnoreCase(termo)))
+                .findFirst()
+                .orElse(TERMOS_ICONE_RESERVA.get(0));
     }
 
     /** Lê a cor de destaque da capa já persistida, ou sorteia uma cor padrão se não houver capa ainda. */
@@ -228,11 +259,14 @@ public class IlustradorService {
      * a usar o Mistral pelo resto da execução. Só cai no termo padrão se as duas IAs estiverem
      * indisponíveis.
      */
-    private String gerarTermoIcone(Noticia noticia, String termoAnterior, boolean[] geminiEsgotado,
-                                    boolean[] mistralEsgotado) {
+    private String gerarTermoIcone(Noticia noticia, List<String> termosUsados, String descricaoUsuario,
+                                    boolean[] geminiEsgotado, boolean[] mistralEsgotado) {
         String pedido = "Título: " + noticia.getTitulo()
-                + (termoAnterior != null && !termoAnterior.isBlank()
-                        ? "\nTermo já usado na capa atual (não repita): " + termoAnterior
+                + (!termosUsados.isEmpty()
+                        ? "\nTermos já usados na capa recentemente (não repita nenhum): " + String.join(", ", termosUsados)
+                        : "")
+                + (descricaoUsuario != null && !descricaoUsuario.isBlank()
+                        ? "\nDescrição adicional do usuário para guiar o ícone: " + descricaoUsuario.trim()
                         : "");
 
         if (!geminiEsgotado[0]) {
@@ -310,7 +344,7 @@ public class IlustradorService {
     private String gerarIlustracao(Noticia noticia, boolean[] geminiEsgotado, boolean[] mistralEsgotado) {
         Acabamento acabamento = gerarAcabamento(noticia, geminiEsgotado, mistralEsgotado);
         String iconeSvg = buscarIconeComFallback(acabamento.termoIcone());
-        noticia.setUltimoTermoIcone(acabamento.termoIcone());
+        noticia.setTermosIconeUsados(objectMapper.writeValueAsString(List.of(acabamento.termoIcone())));
         return renderizar(acabamento, iconeSvg);
     }
 

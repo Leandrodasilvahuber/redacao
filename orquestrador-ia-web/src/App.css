@@ -838,6 +838,47 @@
   cursor: not-allowed;
 }
 
+.regerar-icone-descricao {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.regerar-icone-input {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.regerar-icone-acoes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.regerar-icone-acoes .botao-regerar-icone {
+  margin-top: 0;
+}
+
+.botao-cancelar-icone {
+  margin-top: 0;
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+}
+
+.botao-cancelar-icone:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .modal-publicada {
   margin-top: 1.5rem;
   font-weight: 600;
