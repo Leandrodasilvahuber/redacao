@@ -153,6 +153,37 @@
   max-width: 640px;
 }
 
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 640px;
+}
+
+.criar-noticia {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 640px;
+}
+
+.criar-noticia-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+
+.criar-noticia-acoes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.dashboard-uso {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .config-secao {
   background: #1e293b;
   border: 1px solid #334155;
@@ -192,13 +223,20 @@
   font-size: 0.75rem;
 }
 
-.config-campo input[type="password"] {
+.config-campo input[type="password"],
+.config-campo input[type="text"],
+.config-campo textarea {
   background: #0f172a;
   border: 1px solid #334155;
   border-radius: 6px;
   padding: 0.5rem 0.7rem;
   color: #e2e8f0;
   font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.config-campo textarea {
+  resize: vertical;
 }
 
 .config-checkboxes {

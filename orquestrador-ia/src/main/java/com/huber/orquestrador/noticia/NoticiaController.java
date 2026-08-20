@@ -2,6 +2,8 @@ package com.huber.orquestrador.noticia;
 
 import com.huber.orquestrador.blog.BlogPublicadorService;
 import com.huber.orquestrador.linkedin.LinkedInPublicadorService;
+import com.huber.orquestrador.mistral.LimiteMistralAtingidoException;
+import com.huber.orquestrador.pipeline.CriadorManualService;
 import com.huber.orquestrador.pipeline.IlustradorService;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,15 +28,18 @@ public class NoticiaController {
     private final LinkedInPublicadorService linkedInPublicadorService;
     private final BlogPublicadorService blogPublicadorService;
     private final IlustradorService ilustradorService;
+    private final CriadorManualService criadorManualService;
 
     public NoticiaController(NoticiaRepository noticiaRepository,
                               LinkedInPublicadorService linkedInPublicadorService,
                               BlogPublicadorService blogPublicadorService,
-                              IlustradorService ilustradorService) {
+                              IlustradorService ilustradorService,
+                              CriadorManualService criadorManualService) {
         this.noticiaRepository = noticiaRepository;
         this.linkedInPublicadorService = linkedInPublicadorService;
         this.blogPublicadorService = blogPublicadorService;
         this.ilustradorService = ilustradorService;
+        this.criadorManualService = criadorManualService;
     }
 
     @GetMapping
@@ -149,6 +154,53 @@ public class NoticiaController {
         int virgula = base64.indexOf(',');
         String conteudo = virgula >= 0 ? base64.substring(virgula + 1) : base64;
         return Base64.getDecoder().decode(conteudo);
+    }
+
+    /** Pede ao Mistral pra formatar um texto colado em notícia ou breve tutorial, sem salvar nada. */
+    @PostMapping("/formatar-manual")
+    public FormatoManualResponse formatarManual(@RequestBody FormatarManualRequest body) {
+        if (body == null || body.texto() == null || body.texto().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "texto é obrigatório");
+        }
+        CriadorManualService.TipoFormatacao tipo = tipoFormatacao(body.tipo());
+        try {
+            CriadorManualService.FormatoGerado gerado = criadorManualService.formatar(body.texto(), tipo);
+            return new FormatoManualResponse(gerado.titulo(), gerado.texto());
+        } catch (LimiteMistralAtingidoException e) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Limite do Mistral atingido, tente de novo mais tarde: " + e.getMessage());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Falha ao formatar o texto: " + e.getMessage());
+        }
+    }
+
+    private static CriadorManualService.TipoFormatacao tipoFormatacao(String tipo) {
+        try {
+            return tipo != null
+                    ? CriadorManualService.TipoFormatacao.valueOf(tipo)
+                    : CriadorManualService.TipoFormatacao.NOTICIA;
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "tipo inválido: " + tipo);
+        }
+    }
+
+    public record FormatarManualRequest(String texto, String tipo) {
+    }
+
+    public record FormatoManualResponse(String titulo, String texto) {
+    }
+
+    /** Salva a notícia criada manualmente (já formatada) no pipeline, no estado REVISADA. */
+    @PostMapping("/criar-manual")
+    public Noticia criarManual(@RequestBody CriarManualRequest body) {
+        if (body == null || body.titulo() == null || body.titulo().isBlank()
+                || body.texto() == null || body.texto().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "titulo e texto são obrigatórios");
+        }
+        return criadorManualService.salvar(body.titulo(), body.texto());
+    }
+
+    public record CriarManualRequest(String titulo, String texto) {
     }
 
     @DeleteMapping("/{id}")

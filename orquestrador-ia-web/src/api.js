@@ -73,6 +73,26 @@ export function buscarUsoMistral() {
   return requisitar("/mistral/uso");
 }
 
+export function formatarNoticiaManual(texto, tipo) {
+  return requisitar(
+    "/noticias/formatar-manual",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texto, tipo }),
+    },
+    90_000
+  );
+}
+
+export function criarNoticiaManual(titulo, texto) {
+  return requisitar("/noticias/criar-manual", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titulo, texto }),
+  });
+}
+
 export function buscarConfiguracoes() {
   return requisitar("/configuracoes");
 }

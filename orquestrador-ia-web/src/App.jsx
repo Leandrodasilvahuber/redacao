@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Board from "./Board";
 import Configuracoes from "./Configuracoes";
+import CriarNoticia from "./CriarNoticia";
+import Dashboard from "./Dashboard";
 import DetalheModal from "./DetalheModal";
 import IndicadorIA from "./IndicadorIA";
-import UsoGroq from "./UsoGroq";
-import UsoMistral from "./UsoMistral";
 import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, listarNoticias, marcarPublicada, regerarIcone, rodarEtapa } from "./api";
 import { CONTADOR_POR_ETAPA, PROXIMA_ETAPA } from "./estados";
 import { listaDeIlustracoes, rasterizarSvgParaPng } from "./svgUtils";
@@ -196,6 +196,18 @@ export default function App() {
             Pipeline
           </button>
           <button
+            className={abaAtiva === "criar-noticia" ? "aba-ativa" : ""}
+            onClick={() => setAbaAtiva("criar-noticia")}
+          >
+            Criar Notícia
+          </button>
+          <button
+            className={abaAtiva === "dashboard" ? "aba-ativa" : ""}
+            onClick={() => setAbaAtiva("dashboard")}
+          >
+            Dashboard
+          </button>
+          <button
             className={abaAtiva === "configuracoes" ? "aba-ativa" : ""}
             onClick={() => setAbaAtiva("configuracoes")}
           >
@@ -204,20 +216,15 @@ export default function App() {
         </div>
 
         {abaAtiva === "board" && (
-          <>
-            <div className="botoes-etapas">
-              <button onClick={buscarNoticias} disabled={etapaRodando !== null}>
-                {etapaRodando === "buscar" ? "Buscando..." : "Buscar notícias"}
-              </button>
-            </div>
-            <UsoGroq titulo="Groq" uso={usoGroq} />
-            <UsoGroq titulo="Gemini" uso={usoGemini} />
-            <UsoMistral uso={usoMistral} />
-          </>
+          <div className="botoes-etapas">
+            <button onClick={buscarNoticias} disabled={etapaRodando !== null}>
+              {etapaRodando === "buscar" ? "Buscando..." : "Buscar notícias"}
+            </button>
+          </div>
         )}
       </header>
 
-      {abaAtiva === "board" ? (
+      {abaAtiva === "board" && (
         <>
           {etapaRodando && (
             <div className="progresso">
@@ -245,9 +252,22 @@ export default function App() {
             regerandoIcone={regerandoIcone}
           />
         </>
-      ) : (
-        <Configuracoes />
       )}
+
+      {abaAtiva === "criar-noticia" && (
+        <CriarNoticia
+          aoSalvar={async () => {
+            await carregar();
+            setAbaAtiva("board");
+          }}
+        />
+      )}
+
+      {abaAtiva === "dashboard" && (
+        <Dashboard usoGroq={usoGroq} usoGemini={usoGemini} usoMistral={usoMistral} />
+      )}
+
+      {abaAtiva === "configuracoes" && <Configuracoes />}
     </div>
   );
 }
