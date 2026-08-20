@@ -154,10 +154,149 @@
 }
 
 .dashboard {
+  --dash-groq: #0284c7;
+  --dash-gemini: #7c3aed;
+  --dash-mistral: #d97706;
+  --dash-critico: #ef4444;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 640px;
+  max-width: 760px;
+}
+
+.dash-legenda {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.dash-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.dash-legenda-ponto {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dash-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.dash-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-top: 3px solid var(--dash-cor);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+}
+
+.dash-card-topo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  margin-bottom: 0.5rem;
+}
+
+.dash-card-ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dash-cor);
+  display: inline-block;
+}
+
+.dash-card-vazio {
+  color: #64748b;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.dash-card-hero {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--dash-cor);
+  line-height: 1;
+}
+
+.dash-card-hero.critico {
+  color: var(--dash-critico);
+}
+
+.dash-card-legenda {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  margin: 0.2rem 0 0.6rem;
+}
+
+.dash-meter-trilho {
+  height: 6px;
+  background: color-mix(in srgb, var(--dash-cor) 18%, transparent);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.6rem;
+}
+
+.dash-meter-preenchido {
+  height: 100%;
+  background: var(--dash-cor);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.dash-meter-preenchido.critico {
+  background: var(--dash-critico);
+}
+
+.dash-card-detalhe {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+.dash-graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.dash-grafico h3 {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  margin: 0 0 0.5rem;
+}
+
+.dash-grafico-svg {
+  width: 100%;
+  height: auto;
+}
+
+.dash-grafico-rotulo {
+  font-size: 10px;
+  fill: #94a3b8;
+  dominant-baseline: middle;
+}
+
+.dash-grafico-trilho {
+  fill: #1e293b;
+}
+
+.dash-grafico-valor {
+  font-size: 10px;
+  fill: #cbd5e1;
+  dominant-baseline: middle;
 }
 
 .criar-noticia {
