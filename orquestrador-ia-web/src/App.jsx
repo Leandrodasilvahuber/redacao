@@ -184,6 +184,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <div className="app-conteudo">
       <header className="topo">
         <div className="topo-titulo">
           <h1>Orquestrador de IAs — Notícias para LinkedIn</h1>
@@ -265,6 +266,7 @@ export default function App() {
       )}
 
       {abaAtiva === "configuracoes" && <Configuracoes />}
+      </div>
     </div>
   );
 }
