@@ -55,9 +55,15 @@ export function excluirNoticia(id) {
   return requisitar(`/noticias/${id}`, { method: "DELETE" });
 }
 
-export function rodarEtapa(etapa, id) {
+export function rodarEtapa(etapa, id, params = {}) {
   const timeoutMs = etapa === "executar-tudo" ? 180_000 : 90_000;
-  const caminho = id ? `/pipeline/${etapa}?id=${id}` : `/pipeline/${etapa}`;
+  const query = new URLSearchParams();
+  if (id) query.set("id", id);
+  for (const [chave, valor] of Object.entries(params)) {
+    if (valor) query.set(chave, valor);
+  }
+  const qs = query.toString();
+  const caminho = qs ? `/pipeline/${etapa}?${qs}` : `/pipeline/${etapa}`;
   return requisitar(caminho, { method: "POST" }, timeoutMs);
 }
 

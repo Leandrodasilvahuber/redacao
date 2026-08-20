@@ -33,9 +33,19 @@ public class PipelineController {
         this.publicadorService = publicadorService;
     }
 
+    /**
+     * Busca novas notícias nos feeds configurados. Quando {@code termo} é informado, filtra as
+     * entradas dos feeds por esse termo e, em seguida, já roda a seleção por IA reforçando o mesmo
+     * termo no prompt (as notícias recém-buscadas ficam no estado BUSCADA, prontas pra seleção).
+     */
     @PostMapping("/buscar")
-    public Map<String, Integer> buscar() {
-        return Map.of("novasNoticias", buscadorService.buscar());
+    public Map<String, Integer> buscar(@RequestParam(required = false) String termo) {
+        Map<String, Integer> resultado = new LinkedHashMap<>();
+        resultado.put("novasNoticias", buscadorService.buscar(termo));
+        if (termo != null && !termo.isBlank()) {
+            resultado.put("selecionadas", seletorService.selecionar(null, termo));
+        }
+        return resultado;
     }
 
     @PostMapping("/selecionar")

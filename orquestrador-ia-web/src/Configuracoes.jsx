@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
 import { BASE_URL, buscarConfiguracoes, salvarConfiguracoes } from "./api";
 
-const CRITERIOS_BUSCA = [
-  { valor: "NOVIDADES", rotulo: "Novidades" },
-  { valor: "NOSTALGIA", rotulo: "Nostalgia" },
-  { valor: "TEORIAS", rotulo: "Teorias" },
-  { valor: "FERRAMENTAS", rotulo: "Ferramentas" },
-  { valor: "TECNICAS", rotulo: "Técnicas" },
-];
-
 const CHAVES_API = [
   { chave: "groqApiKey", rotulo: "Groq" },
   { chave: "geminiApiKey", rotulo: "Gemini" },
@@ -81,15 +73,6 @@ export default function Configuracoes() {
     } finally {
       setCarregando(false);
     }
-  }
-
-  function alternarCriterio(valor) {
-    setForm((atual) => ({
-      ...atual,
-      criteriosBusca: atual.criteriosBusca.includes(valor)
-        ? atual.criteriosBusca.filter((c) => c !== valor)
-        : [...atual.criteriosBusca, valor],
-    }));
   }
 
   async function salvar() {
@@ -180,23 +163,6 @@ export default function Configuracoes() {
             />
           </div>
         ))}
-      </section>
-
-      <section className="config-secao">
-        <h2>Busca</h2>
-        <p className="config-descricao">Tipos de notícia a priorizar na seleção.</p>
-        <div className="config-checkboxes">
-          {CRITERIOS_BUSCA.map(({ valor, rotulo }) => (
-            <label className="config-checkbox" key={valor}>
-              <input
-                type="checkbox"
-                checked={form.criteriosBusca.includes(valor)}
-                onChange={() => alternarCriterio(valor)}
-              />
-              {rotulo}
-            </label>
-          ))}
-        </div>
       </section>
 
       <section className="config-secao">

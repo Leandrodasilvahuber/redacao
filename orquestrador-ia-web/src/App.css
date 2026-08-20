@@ -93,6 +93,66 @@
   cursor: not-allowed;
 }
 
+.area-busca {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.area-busca-linha {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.area-busca-input {
+  flex: 1;
+  min-width: 240px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.area-busca-linha button {
+  background: #0ea5e9;
+  color: #0f172a;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.area-busca-linha button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.area-busca-criterios {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+
+.area-busca-criterios-rotulo {
+  color: #94a3b8;
+}
+
+.area-busca-criterios .config-checkbox {
+  font-size: 0.8rem;
+}
+
 .erro {
   background: #7f1d1d;
   color: #fecaca;
@@ -147,10 +207,20 @@
 }
 
 .configuracoes {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
   gap: 1.25rem;
-  max-width: 640px;
+}
+
+.configuracoes .erro,
+.configuracoes .mensagem-sucesso,
+.configuracoes .config-salvar {
+  grid-column: 1 / -1;
+}
+
+.configuracoes .config-salvar {
+  justify-self: start;
 }
 
 .dashboard {
@@ -161,7 +231,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 760px;
+  max-width: 960px;
 }
 
 .dash-legenda {
@@ -303,7 +373,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  max-width: 640px;
+  max-width: 900px;
 }
 
 .criar-noticia-textarea {

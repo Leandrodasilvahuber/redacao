@@ -44,20 +44,30 @@ public class SeletorService {
         this.limiteDiario = limiteDiario;
     }
 
-    private String montarPromptSistema() {
+    private String montarPromptSistema(String termo) {
         List<CriterioBusca> criterios = configuracaoService.getCriteriosBuscaAtivos();
-        if (criterios.isEmpty()) {
-            return PROMPT_SISTEMA;
+        String prompt = PROMPT_SISTEMA;
+        if (!criterios.isEmpty()) {
+            String lista = criterios.stream().map(CriterioBusca::getRotulo).collect(Collectors.joining(", "));
+            prompt += "\nPriorize especialmente notícias do tipo: " + lista + ".";
         }
-        String lista = criterios.stream().map(CriterioBusca::getRotulo).collect(Collectors.joining(", "));
-        return PROMPT_SISTEMA + "\nPriorize especialmente notícias do tipo: " + lista + ".";
+        if (termo != null && !termo.isBlank()) {
+            prompt += "\nPrioridade adicional pedida pelo usuário nesta busca: \"" + termo.trim()
+                    + "\". Dê preferência a notícias relacionadas a esse tema, mas continue avaliando pelos"
+                    + " critérios acima.";
+        }
+        return prompt;
     }
 
     public int selecionar() {
-        return selecionar(null);
+        return selecionar(null, null);
     }
 
     public int selecionar(Long id) {
+        return selecionar(id, null);
+    }
+
+    public int selecionar(Long id, String termo) {
         List<Noticia> pendentes = id != null
                 ? noticiaRepository.findById(id)
                         .filter(n -> n.getEstado() == EstadoNoticia.BUSCADA)
@@ -67,7 +77,7 @@ public class SeletorService {
         long jaSelecionadasHoje = noticiaRepository.findByEstado(EstadoNoticia.SELECIONADA).size();
         int selecionadas = 0;
         boolean[] usarMistral = {false};
-        String promptSistema = montarPromptSistema();
+        String promptSistema = montarPromptSistema(termo);
 
         for (Noticia noticia : pendentes) {
             if (jaSelecionadasHoje + selecionadas >= limiteDiario) {

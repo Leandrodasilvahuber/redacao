@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AreaBusca from "./AreaBusca";
 import Board from "./Board";
 import Configuracoes from "./Configuracoes";
 import CriarNoticia from "./CriarNoticia";
@@ -89,11 +90,11 @@ export default function App() {
     return () => clearInterval(intervalo);
   }, [carregar, carregarUsoGroq, carregarUsoGemini, carregarUsoMistral]);
 
-  async function buscarNoticias() {
+  async function buscarNoticias(termo) {
     setEtapaRodando("buscar");
     setErro(null);
     try {
-      await rodarEtapa("buscar", null);
+      await rodarEtapa("buscar", null, { termo });
       await carregar();
     } catch (e) {
       setErro(e.message);
@@ -216,11 +217,7 @@ export default function App() {
         </div>
 
         {abaAtiva === "board" && (
-          <div className="botoes-etapas">
-            <button onClick={buscarNoticias} disabled={etapaRodando !== null}>
-              {etapaRodando === "buscar" ? "Buscando..." : "Buscar notícias"}
-            </button>
-          </div>
+          <AreaBusca aoBuscar={buscarNoticias} buscando={etapaRodando !== null} />
         )}
       </header>
 
