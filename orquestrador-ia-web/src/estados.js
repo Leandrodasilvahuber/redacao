@@ -31,8 +31,8 @@ export const COLUNAS = [
   { estado: "SELECIONADA", titulo: "Selecionada", cor: "#0ea5e9" },
   { estado: "REDIGIDA", titulo: "Redigida", cor: "#8b5cf6" },
   { estado: "REVISADA", titulo: "Revisada", cor: "#f59e0b" },
-  { estado: "ILUSTRADA", titulo: "Ilustrar e adequar ao LinkedIn", cor: "#ec4899" },
-  { estado: "PRONTA_PARA_PUBLICAR", titulo: "Pronta para publicar", cor: "#22c55e" },
+  { estado: "ILUSTRADA", titulo: "Ilustrada", cor: "#ec4899" },
+  { estado: "PRONTA_PARA_PUBLICAR", titulo: "Pronta", cor: "#22c55e" },
   { estado: "PUBLICADA", titulo: "Publicada", cor: "#16a34a" },
 ];
 
