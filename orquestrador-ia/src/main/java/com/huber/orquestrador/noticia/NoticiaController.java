@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/noticias")
@@ -211,5 +213,25 @@ public class NoticiaController {
         blogPublicadorService.excluir(noticia);
         noticiaRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Exclui de uma vez todas as notícias de um estado do pipeline (ex.: limpar a coluna
+     * "Buscada"). Não é permitido em notícias já PUBLICADAs, pra evitar apagar em massa posts que
+     * já foram ao ar.
+     */
+    @DeleteMapping
+    public Map<String, Integer> excluirTodas(@RequestParam EstadoNoticia estado) {
+        if (estado == EstadoNoticia.PUBLICADA) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Não é possível excluir em massa notícias já publicadas");
+        }
+        List<Noticia> noticias = noticiaRepository.findByEstado(estado);
+        for (Noticia noticia : noticias) {
+            linkedInPublicadorService.excluir(noticia);
+            blogPublicadorService.excluir(noticia);
+        }
+        noticiaRepository.deleteAll(noticias);
+        return Map.of("excluidas", noticias.size());
     }
 }

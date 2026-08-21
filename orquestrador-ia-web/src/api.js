@@ -55,6 +55,10 @@ export function excluirNoticia(id) {
   return requisitar(`/noticias/${id}`, { method: "DELETE" });
 }
 
+export function excluirTodasPorEstado(estado) {
+  return requisitar(`/noticias?estado=${estado}`, { method: "DELETE" });
+}
+
 export function rodarEtapa(etapa, id, params = {}) {
   const timeoutMs = etapa === "executar-tudo" ? 180_000 : 90_000;
   const query = new URLSearchParams();

@@ -6,7 +6,7 @@ import CriarNoticia from "./CriarNoticia";
 import Dashboard from "./Dashboard";
 import DetalheModal from "./DetalheModal";
 import IndicadorIA from "./IndicadorIA";
-import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, listarNoticias, marcarPublicada, regerarIcone, rodarEtapa } from "./api";
+import { buscarUsoGemini, buscarUsoGroq, buscarUsoMistral, excluirNoticia, excluirTodasPorEstado, listarNoticias, marcarPublicada, regerarIcone, rodarEtapa } from "./api";
 import { CONTADOR_POR_ETAPA, PROXIMA_ETAPA } from "./estados";
 import { listaDeIlustracoes, rasterizarSvgParaPng } from "./svgUtils";
 import "./App.css";
@@ -153,6 +153,24 @@ export default function App() {
     }
   }
 
+  async function excluirTodosDaColuna(estado, titulo) {
+    const quantidade = noticias.filter((n) => n.estado === estado).length;
+    if (quantidade === 0) return;
+    const confirmado = window.confirm(
+      `Excluir todas as ${quantidade} notícias da coluna "${titulo}"? Essa ação não pode ser desfeita.`
+    );
+    if (!confirmado) return;
+
+    setErro(null);
+    try {
+      await excluirTodasPorEstado(estado);
+      setNoticias((atuais) => atuais.filter((n) => n.estado !== estado));
+      if (selecionada?.estado === estado) setSelecionada(null);
+    } catch (e) {
+      setErro(e.message);
+    }
+  }
+
   async function aprovar(id) {
     setAprovando(true);
     try {
@@ -238,6 +256,7 @@ export default function App() {
             onAbrir={setSelecionada}
             onMoverNoticia={moverNoticia}
             onExcluir={excluir}
+            onExcluirTodos={excluirTodosDaColuna}
             processando={processando}
           />
 

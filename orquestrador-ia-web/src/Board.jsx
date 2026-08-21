@@ -1,7 +1,7 @@
 import Coluna from "./Coluna";
 import { COLUNAS } from "./estados";
 
-export default function Board({ noticias, onAbrir, onMoverNoticia, onExcluir, processando }) {
+export default function Board({ noticias, onAbrir, onMoverNoticia, onExcluir, onExcluirTodos, processando }) {
   return (
     <div className="board">
       {COLUNAS.map(({ estado, titulo, cor }) => (
@@ -14,6 +14,7 @@ export default function Board({ noticias, onAbrir, onMoverNoticia, onExcluir, pr
           onAbrir={onAbrir}
           onMoverNoticia={onMoverNoticia}
           onExcluir={onExcluir}
+          onExcluirTodos={estado === "PUBLICADA" ? null : onExcluirTodos}
           processando={processando}
         />
       ))}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Card from "./Card";
 
-export default function Coluna({ estado, titulo, cor, noticias, onAbrir, onMoverNoticia, onExcluir, processando }) {
+export default function Coluna({ estado, titulo, cor, noticias, onAbrir, onMoverNoticia, onExcluir, onExcluirTodos, processando }) {
   const [emCimaDoAlvo, setEmCimaDoAlvo] = useState(false);
 
   const noticiasOrdenadas = [...noticias].sort(
@@ -27,7 +27,19 @@ export default function Coluna({ estado, titulo, cor, noticias, onAbrir, onMover
     >
       <div className="coluna-cabecalho" style={{ borderColor: cor }}>
         <span>{titulo}</span>
-        <span className="coluna-contagem">{noticias.length}</span>
+        <div className="coluna-cabecalho-acoes">
+          {onExcluirTodos && noticias.length > 0 && (
+            <button
+              type="button"
+              className="coluna-excluir-todos"
+              title={`Excluir todas as notícias de "${titulo}"`}
+              onClick={() => onExcluirTodos(estado, titulo)}
+            >
+              Excluir todos
+            </button>
+          )}
+          <span className="coluna-contagem">{noticias.length}</span>
+        </div>
       </div>
       <div className="coluna-cards">
         {noticiasOrdenadas.map((noticia) => (
